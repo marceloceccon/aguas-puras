@@ -1,0 +1,17 @@
+{
+  "name": "aguas-puras",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AguasPuras — clean water, open data. Monorepo root.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.32.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev:capture": "pnpm --filter @aguas/capture dev",
+    "build:capture": "pnpm --filter @aguas/capture build",
+    "test:contracts": "pnpm --filter @aguas/contracts test",
+    "build:contracts": "pnpm --filter @aguas/contracts build"
+  }
+}

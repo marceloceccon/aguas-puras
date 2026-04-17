@@ -1,0 +1,47 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build
+dist/
+build/
+out/
+.next/
+.turbo/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor/os
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# local claude config
+.claude/settings.local.json
+.claude/commands/
+
+
+# foundry
+packages/contracts/out/
+packages/contracts/cache/
+packages/contracts/broadcast/
+packages/contracts/.gas-snapshot.tmp
+
+# coverage
+coverage/
+lcov.info
+
+# next
+next-env.d.ts
+
+# typescript
+*.tsbuildinfo
