@@ -1,0 +1,18 @@
+{
+  "name": "AguasPuras Capture",
+  "short_name": "AguasPuras",
+  "description": "Field capture + on-chain attestation for water samples.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f7fcfd",
+  "theme_color": "#0aa8cc",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
