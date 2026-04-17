@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import type { Hex } from "viem";
 import { CameraGpsStep } from "@/components/steps/CameraGpsStep";
 import { FormStep } from "@/components/steps/FormStep";
 import { ReviewStep } from "@/components/steps/ReviewStep";
-import { newDraftId, saveDraft } from "@/lib/drafts";
+import { SignStep } from "@/components/steps/SignStep";
+import { SuccessStep } from "@/components/steps/SuccessStep";
+import { deleteDraft, newDraftId, saveDraft } from "@/lib/drafts";
 import type { CapturedImage } from "@/lib/hooks/useCamera";
 import type { GeoFix } from "@/lib/hooks/useGeolocation";
 import { pinImage } from "@/lib/ipfs";
@@ -25,6 +28,7 @@ export default function NewSamplePage() {
   const [imageCid, setImageCid] = useState<string | undefined>(undefined);
   const [imageSha, setImageSha] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ uid: Hex; txHash: Hex; attester: Hex } | null>(null);
 
   const draft: SampleDraft = useMemo(
     () => ({
@@ -125,9 +129,26 @@ export default function NewSamplePage() {
       )}
 
       {step === "sign" && (
-        <div className="rounded-xl border border-aqua-500/20 bg-white/50 p-6 text-sm text-aqua-700 dark:bg-aqua-900/30 dark:text-aqua-50/80">
-          Signing UI lands in the next deliverable (D6). Draft is safe in IndexedDB.
-        </div>
+        <SignStep
+          draft={draft}
+          onBack={() => setStep("review")}
+          onSuccess={async (r) => {
+            setResult(r);
+            await deleteDraft(draftId);
+            setStep("success");
+          }}
+        />
+      )}
+
+      {step === "success" && result && (
+        <SuccessStep
+          uid={result.uid}
+          txHash={result.txHash}
+          attester={result.attester}
+          onNew={() => {
+            if (typeof window !== "undefined") window.location.assign("/new");
+          }}
+        />
       )}
     </main>
   );
