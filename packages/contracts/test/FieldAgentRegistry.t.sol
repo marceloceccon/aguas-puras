@@ -140,4 +140,41 @@ contract FieldAgentRegistryTest is Test {
         vm.expectRevert(FieldAgentRegistry.InvalidPublicKey.selector);
         registry.setDataOwnerPublicKey(compressed);
     }
+
+    // ---- fuzz ----
+
+    function testFuzz_Register_AcceptsAnyNonEmptyCid(string calldata fuzzCid) public {
+        vm.assume(bytes(fuzzCid).length > 0);
+        vm.assume(bytes(fuzzCid).length < 256);
+        vm.prank(agent);
+        registry.register(fuzzCid);
+        assertEq(registry.getAgent(agent).encryptedPersonalDataCid, fuzzCid);
+        assertTrue(registry.isActive(agent));
+    }
+
+    function testFuzz_SetPubkey_RejectsWrongLength(bytes calldata fuzzKey) public {
+        vm.assume(fuzzKey.length != 65);
+        vm.prank(dataOwner);
+        vm.expectRevert(FieldAgentRegistry.InvalidPublicKey.selector);
+        registry.setDataOwnerPublicKey(fuzzKey);
+    }
+
+    function testFuzz_SetPubkey_RejectsWrongPrefix(uint8 fuzzPrefix) public {
+        vm.assume(fuzzPrefix != 0x04);
+        bytes memory key = new bytes(65);
+        key[0] = bytes1(fuzzPrefix);
+        vm.prank(dataOwner);
+        vm.expectRevert(FieldAgentRegistry.InvalidPublicKey.selector);
+        registry.setDataOwnerPublicKey(key);
+    }
+
+    function testFuzz_Deactivate_AlwaysFlipsActive(string calldata fuzzCid) public {
+        vm.assume(bytes(fuzzCid).length > 0);
+        vm.prank(agent);
+        registry.register(fuzzCid);
+        assertTrue(registry.isActive(agent));
+        vm.prank(dataOwner);
+        registry.deactivate(agent);
+        assertFalse(registry.isActive(agent));
+    }
 }

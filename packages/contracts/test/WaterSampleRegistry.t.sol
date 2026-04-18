@@ -193,4 +193,49 @@ contract WaterSampleRegistryTest is Test {
         vm.expectRevert(WaterSampleRegistry.SampleNotReviewed.selector);
         registry.updateLabReadings(UID, "{}");
     }
+
+    // ---- fuzz ----
+
+    function testFuzz_Publish_ArbitraryInputs(
+        address fuzzFieldAgent,
+        bytes32 fuzzUid,
+        bytes32 fuzzHash,
+        string calldata fuzzCid,
+        string calldata fuzzReadings
+    ) public {
+        vm.assume(fuzzFieldAgent != address(0));
+        vm.assume(fuzzUid != bytes32(0));
+        vm.assume(bytes(fuzzCid).length < 256);
+        vm.assume(bytes(fuzzReadings).length < 1024);
+
+        vm.prank(publisher);
+        registry.publishSample(fuzzFieldAgent, fuzzUid, fuzzHash, fuzzCid, fuzzReadings);
+
+        assertTrue(registry.exists(fuzzUid));
+        WaterSampleRegistry.Sample memory s = registry.getSample(fuzzUid);
+        assertEq(s.fieldAgent, fuzzFieldAgent);
+        assertEq(s.dataHash, fuzzHash);
+        assertEq(s.publisher, publisher);
+        assertFalse(s.reviewed);
+    }
+
+    function testFuzz_Publish_DuplicateAlwaysReverts(bytes32 fuzzUid) public {
+        vm.assume(fuzzUid != bytes32(0));
+        vm.prank(publisher);
+        registry.publishSample(fieldAgent, fuzzUid, DATA_HASH, IMAGE_CID, READINGS);
+        vm.prank(publisher);
+        vm.expectRevert(WaterSampleRegistry.SampleAlreadyPublished.selector);
+        registry.publishSample(fieldAgent, fuzzUid, DATA_HASH, IMAGE_CID, READINGS);
+    }
+
+    function testFuzz_ReviewAndSign_NotTwice(bytes32 fuzzUid) public {
+        vm.assume(fuzzUid != bytes32(0));
+        vm.prank(publisher);
+        registry.publishSample(fieldAgent, fuzzUid, DATA_HASH, IMAGE_CID, READINGS);
+        vm.prank(reviewer);
+        registry.reviewAndSign(fuzzUid);
+        vm.prank(reviewer);
+        vm.expectRevert(WaterSampleRegistry.SampleAlreadyReviewed.selector);
+        registry.reviewAndSign(fuzzUid);
+    }
 }
