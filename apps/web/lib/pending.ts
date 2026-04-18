@@ -1,25 +1,8 @@
+import type { PendingEnvelope } from "@aguas/shared";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 
-export interface PendingEnvelope {
-  schema: `0x${string}`;
-  fieldAgent: `0x${string}`;
-  uid: `0x${string}`;
-  dataHash: `0x${string}`;
-  imageCid: string;
-  payload: {
-    timestamp: string;
-    lat: string;
-    lon: string;
-    collectorName: string;
-    imageCid: string;
-    labReadingsJson: string;
-    notes: string;
-  };
-  message: string;
-  signature: `0x${string}`;
-  submittedAt: number;
-}
+export type { PendingEnvelope };
 
 const PENDING_DIR = path.resolve(process.cwd(), "..", "..", "pending");
 

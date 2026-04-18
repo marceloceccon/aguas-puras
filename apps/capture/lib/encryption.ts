@@ -17,25 +17,10 @@
  * receiving a deletion request.
  */
 
+import type { EncryptedBlob, FieldAgentPersonalData } from "@aguas/shared";
 import EthCrypto from "eth-crypto";
 
-export interface FieldAgentPersonalData {
-  name: string;
-  cpf: string;
-  email?: string;
-  phone?: string;
-  kitSerial?: string;
-  address?: string;
-}
-
-export interface EncryptedBlob {
-  iv: string;
-  ephemPublicKey: string;
-  ciphertext: string;
-  mac: string;
-  version: "eth-crypto-v1";
-  encryptedAt: number;
-}
+export type { EncryptedBlob, FieldAgentPersonalData };
 
 function stripPrefix(pubkey: `0x${string}`): string {
   // eth-crypto expects the uncompressed pubkey without the leading 04 byte.

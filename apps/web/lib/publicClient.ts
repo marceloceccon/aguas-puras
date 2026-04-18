@@ -1,5 +1,8 @@
+import { fieldAgentRegistryAbi, waterSampleRegistryAbi } from "@aguas/shared";
 import { createPublicClient, http, type Address } from "viem";
 import { base, baseSepolia, foundry } from "viem/chains";
+
+export { fieldAgentRegistryAbi, waterSampleRegistryAbi };
 
 const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? foundry.id);
 const chain =
@@ -12,16 +15,6 @@ export const publicClient = createPublicClient({ chain, transport: http(rpcUrl) 
 
 export const registryAddress = (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS ??
   "0x0000000000000000000000000000000000000000") as Address;
-
-export const fieldAgentRegistryAbi = [
-  {
-    type: "function",
-    name: "isActive",
-    stateMutability: "view",
-    inputs: [{ name: "agent", type: "address" }],
-    outputs: [{ type: "bool" }]
-  }
-] as const;
 
 export function fieldAgentRegistryAddress(): Address {
   const raw = process.env.NEXT_PUBLIC_FIELD_AGENT_REGISTRY_ADDRESS;
@@ -43,30 +36,3 @@ export async function isFieldAgentActive(agent: Address): Promise<boolean> {
     return false;
   }
 }
-
-export const waterSampleRegistryAbi = [
-  {
-    type: "function",
-    name: "getSample",
-    stateMutability: "view",
-    inputs: [{ name: "attestationUID", type: "bytes32" }],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "dataHash", type: "bytes32" },
-          { name: "attester", type: "address" },
-          { name: "blockTimestamp", type: "uint64" },
-          { name: "labReadingsJson", type: "string" }
-        ]
-      }
-    ]
-  },
-  {
-    type: "function",
-    name: "exists",
-    stateMutability: "view",
-    inputs: [{ name: "attestationUID", type: "bytes32" }],
-    outputs: [{ type: "bool" }]
-  }
-] as const;

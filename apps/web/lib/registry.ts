@@ -1,27 +1,10 @@
+import { waterSampleRegistryAbi } from "@aguas/shared";
 import type { Address } from "viem";
 
-export const waterSampleRegistryWriteAbi = [
-  {
-    type: "function",
-    name: "publishSample",
-    stateMutability: "nonpayable",
-    inputs: [
-      { name: "fieldAgent", type: "address" },
-      { name: "attestationUID", type: "bytes32" },
-      { name: "dataHash", type: "bytes32" },
-      { name: "imageCid", type: "string" },
-      { name: "labReadingsJson", type: "string" }
-    ],
-    outputs: []
-  },
-  {
-    type: "function",
-    name: "reviewAndSign",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "attestationUID", type: "bytes32" }],
-    outputs: []
-  }
-] as const;
+/**
+ * Web-side wrapper around the shared ABI + env-resolved address.
+ */
+export const waterSampleRegistryWriteAbi = waterSampleRegistryAbi;
 
 export function registryAddress(): Address {
   const raw = process.env.NEXT_PUBLIC_REGISTRY_ADDRESS;

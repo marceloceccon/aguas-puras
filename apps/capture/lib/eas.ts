@@ -1,38 +1,26 @@
 /**
- * EAS-aligned attestation helpers.
- *
- * The MVP implements a minimal, EAS-compatible attestation envelope: the
- * collector signs a canonical JSON payload and the resulting (dataHash,
- * attestationUID) tuple is what gets submitted to WaterSampleRegistry.
- *
- * Full on-chain EAS integration (EAS.attest / attestByDelegation against a
- * registered schema UID on Base) is deferred — see specification.md §3.
- *
- * Schema (per spec §3):
- *   uint256 timestamp, uint256 lat, uint256 lon, string collectorName,
- *   string imageCid, string labReadingsJson, string notes
+ * App-local glue around the shared EAS codec (@aguas/shared/eas). Holds only
+ * the env-resolution logic + draft→payload projection; the pure codec lives
+ * in the shared package so capture and web stay bit-identical.
  */
-
-import { encodePacked, keccak256, type Hex } from "viem";
+import {
+  ZERO_SCHEMA_UID,
+  attestationMessage as sharedAttestationMessage,
+  attestationUID as sharedAttestationUID,
+  canonicalPayloadBytes as sharedCanonicalPayloadBytes,
+  dataHash as sharedDataHash,
+  encodeLatLon,
+  type AttestationPayload
+} from "@aguas/shared";
+import type { Hex } from "viem";
 import type { SampleDraft } from "./types";
 
-export interface AttestationPayload {
-  timestamp: bigint;
-  lat: bigint;
-  lon: bigint;
-  collectorName: string;
-  imageCid: string;
-  labReadingsJson: string;
-  notes: string;
-}
-
-const LATLON_SCALE = 1_000_000n;
-const LATLON_BIAS = 180n * LATLON_SCALE;
-
-/** Fixed-point encode lat/lon at 6 decimals, biased by +180 deg so the value fits in uint256. */
-export function encodeLatLon(value: number): bigint {
-  return BigInt(Math.round(value * 1_000_000)) + LATLON_BIAS;
-}
+export { ZERO_SCHEMA_UID, encodeLatLon };
+export const canonicalPayloadBytes = sharedCanonicalPayloadBytes;
+export const dataHash = sharedDataHash;
+export const attestationUID = sharedAttestationUID;
+export const attestationMessage = sharedAttestationMessage;
+export type { AttestationPayload };
 
 export function buildPayload(draft: SampleDraft): AttestationPayload {
   if (draft.lat === undefined || draft.lon === undefined) {
@@ -49,51 +37,6 @@ export function buildPayload(draft: SampleDraft): AttestationPayload {
   };
 }
 
-/** Deterministic, canonical bytes for signing + dataHash. */
-export function canonicalPayloadBytes(p: AttestationPayload): Hex {
-  return encodePacked(
-    ["uint256", "uint256", "uint256", "string", "string", "string", "string"],
-    [p.timestamp, p.lat, p.lon, p.collectorName, p.imageCid, p.labReadingsJson, p.notes]
-  );
-}
-
-export function dataHash(p: AttestationPayload): Hex {
-  return keccak256(canonicalPayloadBytes(p));
-}
-
-/** Attestation UID: keccak256(schemaUID || attester || dataHash). Stable across retries. */
-export function attestationUID(
-  schemaUID: Hex,
-  attester: Hex,
-  hash: Hex
-): Hex {
-  return keccak256(encodePacked(["bytes32", "address", "bytes32"], [schemaUID, attester, hash]));
-}
-
-/** Human-readable preimage for signMessage (shown in the wallet prompt). */
-export function attestationMessage(schemaUID: Hex, p: AttestationPayload): string {
-  return [
-    "AguasPuras WaterSampleAttestation",
-    `schema: ${schemaUID}`,
-    `timestamp: ${p.timestamp.toString()}`,
-    `lat: ${p.lat.toString()}`,
-    `lon: ${p.lon.toString()}`,
-    `collector: ${p.collectorName}`,
-    `imageCid: ${p.imageCid}`,
-    `readings: ${p.labReadingsJson}`,
-    `notes: ${p.notes}`,
-    `dataHash: ${dataHash(p)}`
-  ].join("\n");
-}
-
-export const ZERO_SCHEMA_UID: Hex = `0x${"00".repeat(32)}` as Hex;
-
-/**
- * Pick the right schema UID for the active chain. Each Base network has its
- * own EAS SchemaRegistry and therefore its own UID for the same schema
- * declaration. Falls back to the un-suffixed env var for dev convenience,
- * then to ZERO_SCHEMA_UID so the client doesn't hard-crash pre-configuration.
- */
 export function schemaUIDFromEnv(): Hex {
   const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "0");
   const keyed =

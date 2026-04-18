@@ -1,15 +1,21 @@
 import Link from "next/link";
 import { isHex, type Hex } from "viem";
-import { easUrl, explorerTxUrl, formatTimestamp, shortAddr } from "@/lib/format";
+import { easUrl, formatTimestamp, shortAddr } from "@/lib/format";
 import { publicClient, registryAddress, waterSampleRegistryAbi } from "@/lib/publicClient";
 
 export const dynamic = "force-dynamic";
 
+/** On-chain tuple shape returned by `WaterSampleRegistry.getSample(uid)`. */
 interface OnchainSample {
   dataHash: Hex;
-  attester: Hex;
-  blockTimestamp: bigint;
+  fieldAgent: Hex;
+  publisher: Hex;
+  reviewer: Hex;
+  publishedAt: bigint;
+  reviewedAt: bigint;
+  imageCid: string;
   labReadingsJson: string;
+  reviewed: boolean;
 }
 
 async function readSample(uid: Hex): Promise<OnchainSample | null> {
@@ -54,17 +60,23 @@ export default async function VerifyPage({ params }: { params: Promise<{ uid: st
       <header className="mt-6">
         <div
           className={`inline-flex h-12 w-12 items-center justify-center rounded-full text-xl text-white ${
-            sample ? "bg-aqua-500" : "bg-red-500"
+            sample ? (sample.reviewed ? "bg-aqua-500" : "bg-amber-500") : "bg-red-500"
           }`}
         >
-          {sample ? "✓" : "!"}
+          {sample ? (sample.reviewed ? "✓" : "…") : "!"}
         </div>
         <h1 className="mt-4 text-2xl font-semibold text-aqua-900 dark:text-aqua-50">
-          {sample ? "Verified on Base" : "Not registered"}
+          {sample
+            ? sample.reviewed
+              ? "Verified + reviewed on Base"
+              : "Published, pending Laboratory review"
+            : "Not registered"}
         </h1>
         <p className="mt-1 text-sm text-aqua-700 dark:text-aqua-50/70">
           {sample
-            ? "This sample's attestation UID is recorded on-chain."
+            ? sample.reviewed
+              ? "This sample has been published by a Lab Publisher and signed off by a distinct Lab Reviewer."
+              : "The Laboratory has published this sample; a Reviewer has not yet signed off."
             : "No sample found for this UID on the configured chain."}
         </p>
       </header>
@@ -75,10 +87,20 @@ export default async function VerifyPage({ params }: { params: Promise<{ uid: st
           <dd className="break-all font-mono text-xs">{uid}</dd>
           {sample && (
             <>
-              <dt className="text-aqua-700/70 dark:text-aqua-50/60">Attester</dt>
-              <dd className="font-mono">{shortAddr(sample.attester)}</dd>
-              <dt className="text-aqua-700/70 dark:text-aqua-50/60">When</dt>
-              <dd>{formatTimestamp(sample.blockTimestamp.toString())}</dd>
+              <dt className="text-aqua-700/70 dark:text-aqua-50/60">Field agent</dt>
+              <dd className="font-mono">{shortAddr(sample.fieldAgent)}</dd>
+              <dt className="text-aqua-700/70 dark:text-aqua-50/60">Publisher</dt>
+              <dd className="font-mono">{shortAddr(sample.publisher)}</dd>
+              <dt className="text-aqua-700/70 dark:text-aqua-50/60">Published</dt>
+              <dd>{formatTimestamp(sample.publishedAt.toString())}</dd>
+              {sample.reviewed && (
+                <>
+                  <dt className="text-aqua-700/70 dark:text-aqua-50/60">Reviewer</dt>
+                  <dd className="font-mono">{shortAddr(sample.reviewer)}</dd>
+                  <dt className="text-aqua-700/70 dark:text-aqua-50/60">Reviewed</dt>
+                  <dd>{formatTimestamp(sample.reviewedAt.toString())}</dd>
+                </>
+              )}
               <dt className="text-aqua-700/70 dark:text-aqua-50/60">Data hash</dt>
               <dd className="break-all font-mono text-xs">{sample.dataHash}</dd>
               {sample.labReadingsJson && (

@@ -1,3 +1,8 @@
+import type { LabReadings, Study } from "@aguas/shared";
+
+export type { LabReadings, Study };
+
+/** Shape returned by Ponder's GraphQL for the `sample` table. */
 export interface IndexedSample {
   attestationUID: `0x${string}`;
   dataHash: `0x${string}`;
@@ -15,23 +20,10 @@ export interface IndexedSample {
   labReadingsUpdater: `0x${string}` | null;
 }
 
-export type LabReadings = Record<string, number | string>;
-
+/** Post-parse view of an IndexedSample — readings decoded, lat/lon extracted. */
 export interface ParsedSample extends IndexedSample {
   readings: LabReadings;
   lat: number | null;
   lon: number | null;
   iso: string;
-}
-
-export interface Study {
-  id: string;
-  title: string;
-  date: string;
-  author: string;
-  summary: string;
-  referencedSamples: string[];
-  keyFindings: Array<{ param: string; avg: number; trend: "up" | "down" | "flat" }>;
-  charts?: string[];
-  rawDataUrl?: string;
 }
