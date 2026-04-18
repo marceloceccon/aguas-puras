@@ -24,3 +24,10 @@ export function easUrl(uid: string): string | null {
   if (!base) return null;
   return `${base}/attestation/view/${uid}`;
 }
+
+export function ipfsUrl(cid: string | undefined | null): string | null {
+  if (!cid) return null;
+  if (cid.startsWith("bafy-stub-")) return null; // stub fallback — not retrievable
+  const gateway = process.env.NEXT_PUBLIC_IPFS_GATEWAY ?? "https://gateway.pinata.cloud";
+  return `${gateway.replace(/\/$/, "")}/ipfs/${cid}`;
+}

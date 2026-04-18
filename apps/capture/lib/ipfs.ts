@@ -1,29 +1,46 @@
 /**
- * IPFS pinning — STUB IMPLEMENTATION.
+ * Pin an image to IPFS via the server-side /api/pin proxy (Pinata JWT stays
+ * server-side). Computes sha256 of the uploaded bytes client-side for the
+ * on-chain dataHash — the hash covers the same bytes Pinata stores, so a
+ * verifier can fetch the pin and recompute.
  *
- * The MVP ships without a real pinning service wired up. We hash the file with
- * SHA-256 and return a deterministic pseudo-CID so the rest of the flow
- * (attestation, registry submit, display) works end-to-end offline.
- *
- * Swap `pinImage` for a real Pinata / web3.storage call when a pinning
- * provider is chosen. See specification.md §5 — "Needs Decision: IPFS pinning".
+ * If pinning fails, falls back to a deterministic pseudo-CID derived from the
+ * sha256 so the capture flow still completes. Callers can inspect
+ * `result.fallback === true` to surface a warning.
  */
 
 export interface PinResult {
   cid: string;
   sha256: string;
   bytes: number;
+  fallback?: true;
 }
 
 export async function pinImage(file: Blob): Promise<PinResult> {
-  const bytes = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const buffer = await file.arrayBuffer();
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
   const sha256 = bufferToHex(digest);
-  return {
-    cid: `bafy-stub-${sha256.slice(0, 46)}`,
-    sha256,
-    bytes: bytes.byteLength
-  };
+  const bytes = buffer.byteLength;
+
+  try {
+    const form = new FormData();
+    form.set("file", file, (file as File).name || "sample.jpg");
+    const res = await fetch("/api/pin", { method: "POST", body: form });
+    if (!res.ok) {
+      console.warn("[pin] upstream error", res.status, await res.text().catch(() => ""));
+      return fallback(sha256, bytes);
+    }
+    const body = (await res.json()) as { cid?: string };
+    if (!body.cid) return fallback(sha256, bytes);
+    return { cid: body.cid, sha256, bytes };
+  } catch (err) {
+    console.warn("[pin] network error", err);
+    return fallback(sha256, bytes);
+  }
+}
+
+function fallback(sha256: string, bytes: number): PinResult {
+  return { cid: `bafy-stub-${sha256.slice(0, 46)}`, sha256, bytes, fallback: true };
 }
 
 function bufferToHex(buf: ArrayBuffer): string {

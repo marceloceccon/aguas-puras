@@ -18,6 +18,7 @@ export interface AttestedSample extends SampleDraft {
   txHash: `0x${string}`;
   blockNumber?: bigint;
   attester: `0x${string}`;
+  pinFallback?: true;
 }
 
 export type StepKey = "capture" | "form" | "review" | "sign" | "success";

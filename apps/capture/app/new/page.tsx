@@ -8,7 +8,7 @@ import { FormStep } from "@/components/steps/FormStep";
 import { ReviewStep } from "@/components/steps/ReviewStep";
 import { SignStep } from "@/components/steps/SignStep";
 import { SuccessStep } from "@/components/steps/SuccessStep";
-import { deleteDraft, newDraftId, saveDraft } from "@/lib/drafts";
+import { deleteDraft, newDraftId, saveDraft, saveSubmitted } from "@/lib/drafts";
 import type { CapturedImage } from "@/lib/hooks/useCamera";
 import type { GeoFix } from "@/lib/hooks/useGeolocation";
 import { pinImage } from "@/lib/ipfs";
@@ -28,6 +28,7 @@ export default function NewSamplePage() {
   const [pinning, setPinning] = useState(false);
   const [imageCid, setImageCid] = useState<string | undefined>(undefined);
   const [imageSha, setImageSha] = useState<string | undefined>(undefined);
+  const [pinFallback, setPinFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ uid: Hex; txHash: Hex; attester: Hex } | null>(null);
 
@@ -67,9 +68,10 @@ export default function NewSamplePage() {
             accuracyMeters: fix?.accuracyMeters,
             collectorName: data.collectorName
           });
-          const { cid, sha256 } = await pinImage(watermarked);
-          setImageCid(cid);
-          setImageSha(sha256);
+          const pinned = await pinImage(watermarked);
+          setImageCid(pinned.cid);
+          setImageSha(pinned.sha256);
+          setPinFallback(Boolean(pinned.fallback));
         } catch (err) {
           setError(err instanceof Error ? err.message : "Failed to pin image");
           setPinning(false);
@@ -125,7 +127,13 @@ export default function NewSamplePage() {
       {step === "review" && image && (
         <>
           {pinning && (
-            <p className="text-sm text-aqua-700 dark:text-aqua-50/70">Hashing image…</p>
+            <p className="text-sm text-aqua-700 dark:text-aqua-50/70">Pinning image…</p>
+          )}
+          {pinFallback && (
+            <p className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-800">
+              IPFS pinning failed — stub CID used. The on-chain attestation will still succeed, but
+              the image is not publicly retrievable. Check PINATA_JWT on the server.
+            </p>
           )}
           <ReviewStep
             draft={draft}
@@ -142,6 +150,13 @@ export default function NewSamplePage() {
           onBack={() => setStep("review")}
           onSuccess={async (r) => {
             setResult(r);
+            await saveSubmitted({
+              ...draft,
+              attestationUID: r.uid,
+              txHash: r.txHash,
+              attester: r.attester,
+              ...(pinFallback ? { pinFallback: true as const } : {})
+            });
             await deleteDraft(draftId);
             setStep("success");
           }}
