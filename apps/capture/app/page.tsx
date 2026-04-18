@@ -27,6 +27,12 @@ export default function HomePage() {
         >
           New sample →
         </Link>
+        <Link
+          href="/register"
+          className="mt-3 inline-flex h-10 w-full items-center justify-center rounded-xl border border-aqua-500/40 text-sm font-medium text-aqua-700 transition hover:bg-aqua-500/10 dark:text-aqua-50"
+        >
+          Register as Field Agent
+        </Link>
       </section>
 
       <footer className="mt-auto text-center text-xs text-aqua-700/60 dark:text-aqua-50/40">
