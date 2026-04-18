@@ -165,6 +165,10 @@ Sample data splits explicitly between public and encrypted:
 
 **Website and platform.** Interactive maps, time series, filters, CSV export, studies, chain-direct verifier. Lab Publisher + Reviewer + Admin dashboards wallet-gated with wagmi + signed admin API.
 
+![Map View](screenshots/conceptual/dataview.png)
+![Data Grid View](screenshots/conceptual/gridview.png)
+![New Entry Screenshot](screenshots/conceptual/newentry.png)
+
 **Timeline, locked to 2026:**
 - **April 10–11.** Startup Society Conference III stage. Co-founders and first sponsors signed.
 - **April 22 – May 22.** Ipê Village sprint. Institutional production system hardens. Onchain House, AI House, Privacy House ship.
