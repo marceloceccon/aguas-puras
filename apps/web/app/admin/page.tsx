@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
+import { useAccount, useConnect, useDisconnect, useSignMessage } from "wagmi";
+import { signedFetch, type AdminSigner } from "@/lib/admin-client";
 import { shortAddr } from "@/lib/format";
 import type { Study } from "@/lib/types";
 
@@ -39,6 +40,10 @@ export default function AdminPage() {
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: connecting } = useConnect();
   const { disconnect } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
+  const signer: AdminSigner | null = address
+    ? { address, signMessageAsync: ({ message }) => signMessageAsync({ message }) }
+    : null;
 
   const [files, setFiles] = useState<StudyFileEntry[]>([]);
   const [form, setForm] = useState(emptyForm());
@@ -109,8 +114,12 @@ export default function AdminPage() {
 
   async function handleSaveLocal() {
     setStatus({ kind: "idle" });
+    if (!signer) {
+      setStatus({ kind: "error", message: "Wallet not ready to sign." });
+      return;
+    }
     try {
-      const res = await fetch("/api/studies", {
+      const res = await signedFetch(signer, "/api/studies", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ filename, study })
@@ -143,7 +152,13 @@ export default function AdminPage() {
 
   async function handleDelete(entry: StudyFileEntry) {
     if (typeof window !== "undefined" && !window.confirm(`Delete ${entry.filename}?`)) return;
-    const res = await fetch(`/api/studies/${encodeURIComponent(entry.filename)}`, { method: "DELETE" });
+    if (!signer) {
+      setStatus({ kind: "error", message: "Wallet not ready to sign." });
+      return;
+    }
+    const res = await signedFetch(signer, `/api/studies/${encodeURIComponent(entry.filename)}`, {
+      method: "DELETE"
+    });
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
       setStatus({ kind: "error", message: body.error ?? `HTTP ${res.status}` });
@@ -367,7 +382,7 @@ export default function AdminPage() {
           onClick={handleSaveLocal}
           className="h-12 rounded-xl bg-aqua-500 px-5 font-semibold text-white shadow transition hover:bg-aqua-700 disabled:opacity-40"
         >
-          {form.editingFilename ? "Save changes" : "Save to /studies (dev only)"}
+          {form.editingFilename ? "Sign + save changes" : "Sign + save to /studies"}
         </button>
         <button
           disabled={!valid}

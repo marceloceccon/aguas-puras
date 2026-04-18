@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/admin-auth";
 import { listStudyFiles, writeStudy } from "@/lib/studies";
 import { validateStudy } from "@/lib/study-validate";
 
@@ -8,12 +9,8 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === "production") {
-    return NextResponse.json(
-      { error: "Disabled in production. Download JSON and commit it to the repo." },
-      { status: 403 }
-    );
-  }
+  const auth = await requireAdmin(req);
+  if (!auth.ok) return auth.response;
 
   let payload: { filename?: string; study?: unknown };
   try {
@@ -34,7 +31,7 @@ export async function POST(req: Request) {
 
   try {
     const saved = await writeStudy(filename, validation.value);
-    return NextResponse.json({ ok: true, path: `/studies/${saved}` });
+    return NextResponse.json({ ok: true, path: `/studies/${saved}`, author: auth.address });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
