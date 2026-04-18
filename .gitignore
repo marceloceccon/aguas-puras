@@ -50,3 +50,6 @@ next-env.d.ts
 pending/*.json
 !pending/.gitkeep
 
+
+.devcontainer/
+specification.md
