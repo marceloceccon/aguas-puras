@@ -3,3 +3,6 @@ cache/
 broadcast/
 lib/
 .gas-snapshot.tmp
+.env
+.env.local
+

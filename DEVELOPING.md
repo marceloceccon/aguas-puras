@@ -66,6 +66,62 @@ pnpm dev
 Visit `http://localhost:3001/` for the dashboard, `/admin` for the wallet-gated
 studies composer, and `/verify/<uid>` for chain-direct attestation verification.
 
+## Deploying to Base Sepolia
+
+All 8 blocking decisions are resolved (see `specification.md` footer). For
+testnet deploys the EOA path is appropriate; mainnet must go through the Safe.
+
+```bash
+cd packages/contracts
+cp .env.example .env
+#  Edit .env:
+#    BASE_SEPOLIA_RPC_URL  = your RPC endpoint
+#    DEPLOYER_PRIVATE_KEY  = funded Sepolia key (transfers ownership to OWNER after)
+#    LAB_WALLET            = Safe multisig address (decision #2)
+#    OWNER                 = same Safe (decision #3)
+#    BASESCAN_API_KEY      = Basescan key (decision #6)
+
+export $(grep -v '^#' .env | xargs)
+pnpm deploy:sepolia
+```
+
+This deploys + verifies in one shot. The printed registry addresses go into
+`apps/web/.env.local`, `apps/capture/.env.local`, and
+`packages/indexer/.env.local` (see each app's `.env.*.example`).
+
+## Deploying to Base mainnet (Safe multisig, 2-of-3)
+
+Mainnet deploys do **not** use `DEPLOYER_PRIVATE_KEY`. Two supported flows:
+
+1. **Safe Transaction Builder**: paste the `Deploy.s.sol` calldata (produced by
+   `forge script script/Deploy.s.sol --sig 'run()' --rpc-url base --sender $OWNER`)
+   into the Safe UI's Transaction Builder and collect signatures.
+
+2. **Forge + propose-via-safe** (scripted): run
+   `forge script --sender $OWNER --unlocked --rpc-url base` to simulate, then
+   use [safe-cli](https://github.com/5afe/safe-cli) to broadcast the proposal.
+
+After deploy, verify separately:
+
+```bash
+cd packages/contracts
+forge verify-contract <registry-address> src/WaterSampleRegistry.sol:WaterSampleRegistry --chain base
+forge verify-contract <collector-address> src/CollectorRegistry.sol:CollectorRegistry --chain base
+```
+
+## Registering the EAS schema
+
+One-shot per Base network. Use easscan.org (UI) or the EAS SDK (headless):
+
+```
+Schema: uint256 timestamp,uint256 lat,uint256 lon,string collectorName,string imageCid,string labReadingsJson,string notes
+Resolver: 0x0000000000000000000000000000000000000000
+Revocable: false
+```
+
+Paste the returned UIDs into `apps/capture/.env.local`:
+`NEXT_PUBLIC_EAS_SCHEMA_UID_BASE` and `NEXT_PUBLIC_EAS_SCHEMA_UID_BASE_SEPOLIA`.
+
 ## Package-level commands
 
 | Package             | Key scripts |

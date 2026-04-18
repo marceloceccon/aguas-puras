@@ -27,6 +27,9 @@ pnpm install:deps
 | `pnpm snapshot` | Update `.gas-snapshot` |
 | `pnpm anvil` | Local fork-able chain on :8545 (chain id 8453) |
 | `pnpm deploy:local` | Deploy to local anvil (Foundry default key) |
+| `pnpm deploy:sepolia` | Deploy + Basescan verify on Base Sepolia (requires `.env`) |
+| `pnpm verify:sepolia <addr> <Contract>` | Verify an already-deployed contract |
+| `pnpm verify:base <addr> <Contract>` | Same for mainnet |
 
 ## Contracts
 
