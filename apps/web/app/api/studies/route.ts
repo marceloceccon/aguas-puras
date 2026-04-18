@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   let payload: { filename?: string; study?: unknown };
   try {
-    payload = (await req.json()) as typeof payload;
+    payload = JSON.parse(auth.body) as typeof payload;
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }

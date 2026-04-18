@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
-import { recoverMessageAddress, type Hex } from "viem";
+import { keccak256, recoverMessageAddress, toBytes, type Hex } from "viem";
 
 const MAX_AGE_SECONDS = 300;
 const HEADER_RE = /^AguasPuras (0x[0-9a-fA-F]{40}) (\d+) (0x[0-9a-fA-F]+)$/;
 
 export type AuthResult =
-  | { ok: true; address: `0x${string}` }
+  | { ok: true; address: `0x${string}`; body: string }
   | { ok: false; response: Response };
 
-export function adminSignatureMessage(method: string, pathname: string, timestamp: number): string {
-  return `AguasPuras admin\n${method.toUpperCase()} ${pathname}\n${timestamp}`;
+/**
+ * Canonical signed message for admin writes. The body hash covers the raw
+ * bytes of the request body (or the empty string for GET/DELETE), preventing
+ * an interceptor from swapping the payload of an otherwise-valid request.
+ */
+export function adminSignatureMessage(
+  method: string,
+  pathname: string,
+  timestamp: number,
+  bodyHash: Hex
+): string {
+  return `AguasPuras admin\n${method.toUpperCase()} ${pathname}\n${timestamp}\n${bodyHash}`;
+}
+
+export function hashBody(body: string): Hex {
+  return keccak256(toBytes(body));
 }
 
 function readAllowlist(): Set<string> {
@@ -23,12 +37,17 @@ function readAllowlist(): Set<string> {
 }
 
 /**
- * Gate admin API routes behind:
+ * Gate admin API routes. On success returns the raw body string so the
+ * handler can parse it once (we read the body here to compute its hash
+ * for signature verification).
+ *
+ * Checks:
  *   1. STUDIES_API_ENABLED === "true" (kill-switch)
- *   2. Authorization header `AguasPuras <address> <unix-ts> <signature>`
+ *   2. Authorization header `AguasPuras <addr> <unix-ts> <signature>`
  *   3. Timestamp within ±300s (replay window)
- *   4. address ∈ ADMIN_ALLOWLIST (comma-separated hex addresses)
- *   5. signature recovers to the claimed address over the canonical message
+ *   4. Address ∈ ADMIN_ALLOWLIST
+ *   5. signature recovers to the claimed address over
+ *      `"AguasPuras admin\n<METHOD> <pathname>\n<ts>\n<keccak256(body)>"`.
  */
 export async function requireAdmin(req: Request): Promise<AuthResult> {
   if (process.env.STUDIES_API_ENABLED !== "true") {
@@ -80,8 +99,13 @@ export async function requireAdmin(req: Request): Promise<AuthResult> {
     };
   }
 
+  // Read body once; empty for bodyless methods.
+  const method = req.method.toUpperCase();
+  const body = method === "GET" || method === "HEAD" || method === "DELETE" ? "" : await req.text();
+  const bodyHash = hashBody(body);
   const url = new URL(req.url);
-  const message = adminSignatureMessage(req.method, url.pathname, timestamp);
+  const message = adminSignatureMessage(method, url.pathname, timestamp, bodyHash);
+
   let recovered: string;
   try {
     recovered = await recoverMessageAddress({ message, signature: signature as Hex });
@@ -95,11 +119,11 @@ export async function requireAdmin(req: Request): Promise<AuthResult> {
     return {
       ok: false,
       response: NextResponse.json(
-        { error: "Signature does not match claimed address" },
+        { error: "Signature does not match claimed address (body may have been tampered with)" },
         { status: 401 }
       )
     };
   }
 
-  return { ok: true, address: address.toLowerCase() as `0x${string}` };
+  return { ok: true, address: address.toLowerCase() as `0x${string}`, body };
 }
