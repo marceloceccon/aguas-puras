@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "leaflet/dist/leaflet.css";
+
+html,
+body {
+  height: 100%;
+  background: #f7fcfd;
+  color: #062a34;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (prefers-color-scheme: dark) {
+  html,
+  body {
+    background: #04161b;
+    color: #e8fbff;
+  }
+}
+
+.leaflet-container {
+  border-radius: 1rem;
+}
