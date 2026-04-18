@@ -1,15 +1,25 @@
 import Link from "next/link";
+import { FilterBar } from "@/components/FilterBar";
 import { ReadingsChart } from "@/components/ReadingsChart";
 import { SampleList } from "@/components/SampleList";
 import { SamplesMap } from "@/components/SamplesMap";
+import { StatsBar } from "@/components/StatsBar";
 import { StudiesFeed } from "@/components/StudiesFeed";
+import { applyFilter, isEmptyFilter, parseFilter } from "@/lib/filter";
 import { fetchSamples } from "@/lib/ponder";
 import { listStudies } from "@/lib/studies";
 
 export const dynamic = "force-dynamic";
 
-export default async function HomePage() {
-  const [samples, studies] = await Promise.all([fetchSamples(), listStudies()]);
+export default async function HomePage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const filter = parseFilter(sp);
+  const [all, studies] = await Promise.all([fetchSamples(), listStudies()]);
+  const filtered = isEmptyFilter(filter) ? all : applyFilter(all, filter);
 
   return (
     <main className="mx-auto max-w-5xl px-5 pb-20 pt-8">
@@ -39,26 +49,28 @@ export default async function HomePage() {
       </header>
 
       <section className="space-y-4">
+        <FilterBar />
+        <StatsBar total={all.length} shown={filtered} filtered={!isEmptyFilter(filter)} />
+      </section>
+
+      <section className="mt-6 space-y-4">
         <h2 className="text-lg font-medium text-aqua-900 dark:text-aqua-50">Live map</h2>
-        <SamplesMap samples={samples} />
-        <p className="text-xs text-aqua-700/70 dark:text-aqua-50/60">
-          {samples.length} sample{samples.length === 1 ? "" : "s"} indexed.
-        </p>
+        <SamplesMap samples={filtered} />
       </section>
 
       <section className="mt-10 space-y-3">
         <h2 className="text-lg font-medium text-aqua-900 dark:text-aqua-50">Parameters over time</h2>
         <div className="grid gap-3 sm:grid-cols-2">
-          <ReadingsChart samples={samples} param="ecoli" />
-          <ReadingsChart samples={samples} param="lead" />
-          <ReadingsChart samples={samples} param="ph" />
-          <ReadingsChart samples={samples} param="fluoride" />
+          <ReadingsChart samples={filtered} param="ecoli" />
+          <ReadingsChart samples={filtered} param="lead" />
+          <ReadingsChart samples={filtered} param="ph" />
+          <ReadingsChart samples={filtered} param="fluoride" />
         </div>
       </section>
 
       <section className="mt-10 space-y-3">
         <h2 className="text-lg font-medium text-aqua-900 dark:text-aqua-50">Recent samples</h2>
-        <SampleList samples={samples.slice(0, 20)} />
+        <SampleList samples={filtered.slice(0, 50)} />
       </section>
 
       <section className="mt-10 space-y-3">
