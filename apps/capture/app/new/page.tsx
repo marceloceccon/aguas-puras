@@ -12,6 +12,7 @@ import { deleteDraft, newDraftId, saveDraft } from "@/lib/drafts";
 import type { CapturedImage } from "@/lib/hooks/useCamera";
 import type { GeoFix } from "@/lib/hooks/useGeolocation";
 import { pinImage } from "@/lib/ipfs";
+import { watermarkImage } from "@/lib/watermark";
 import type { LabReadings, SampleDraft, StepKey } from "@/lib/types";
 
 export default function NewSamplePage() {
@@ -59,7 +60,14 @@ export default function NewSamplePage() {
       if (image && !imageCid) {
         setPinning(true);
         try {
-          const { cid, sha256 } = await pinImage(image.file);
+          const watermarked = await watermarkImage(image.file, {
+            isoTime: new Date(draft.createdAt).toISOString(),
+            lat: fix?.lat,
+            lon: fix?.lon,
+            accuracyMeters: fix?.accuracyMeters,
+            collectorName: data.collectorName
+          });
+          const { cid, sha256 } = await pinImage(watermarked);
           setImageCid(cid);
           setImageSha(sha256);
         } catch (err) {
