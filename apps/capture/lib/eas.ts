@@ -88,11 +88,26 @@ export function attestationMessage(schemaUID: Hex, p: AttestationPayload): strin
 
 export const ZERO_SCHEMA_UID: Hex = `0x${"00".repeat(32)}` as Hex;
 
+/**
+ * Pick the right schema UID for the active chain. Each Base network has its
+ * own EAS SchemaRegistry and therefore its own UID for the same schema
+ * declaration. Falls back to the un-suffixed env var for dev convenience,
+ * then to ZERO_SCHEMA_UID so the client doesn't hard-crash pre-configuration.
+ */
 export function schemaUIDFromEnv(): Hex {
-  const raw = process.env.NEXT_PUBLIC_EAS_SCHEMA_UID;
+  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? "0");
+  const keyed =
+    chainId === 8453
+      ? process.env.NEXT_PUBLIC_EAS_SCHEMA_UID_BASE
+      : chainId === 84532
+        ? process.env.NEXT_PUBLIC_EAS_SCHEMA_UID_BASE_SEPOLIA
+        : chainId === 31337
+          ? process.env.NEXT_PUBLIC_EAS_SCHEMA_UID_ANVIL
+          : undefined;
+  const raw = keyed ?? process.env.NEXT_PUBLIC_EAS_SCHEMA_UID;
   if (!raw || raw === "") return ZERO_SCHEMA_UID;
   if (!/^0x[0-9a-fA-F]{64}$/.test(raw)) {
-    throw new Error("NEXT_PUBLIC_EAS_SCHEMA_UID must be a 32-byte hex string");
+    throw new Error("EAS schema UID env must be a 32-byte hex string");
   }
   return raw as Hex;
 }

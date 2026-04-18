@@ -1,13 +1,31 @@
 import { http, createConfig } from "wagmi";
 import { base, baseSepolia, foundry } from "wagmi/chains";
-import { coinbaseWallet, injected } from "wagmi/connectors";
+import { coinbaseWallet, injected, walletConnect } from "wagmi/connectors";
+
+const wcProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
+
+const connectors = [
+  coinbaseWallet({ appName: "AguasPuras Admin", preference: "all" }),
+  injected(),
+  ...(wcProjectId
+    ? [
+        walletConnect({
+          projectId: wcProjectId,
+          metadata: {
+            name: "AguasPuras Admin",
+            description: "Wallet-gated study composer for AguasPuras.",
+            url: "https://aguaspuras.org",
+            icons: []
+          },
+          showQrModal: true
+        })
+      ]
+    : [])
+];
 
 export const wagmiConfig = createConfig({
   chains: [base, baseSepolia, foundry],
-  connectors: [
-    coinbaseWallet({ appName: "AguasPuras Admin", preference: "all" }),
-    injected()
-  ],
+  connectors,
   transports: {
     [base.id]: http(),
     [baseSepolia.id]: http(),
