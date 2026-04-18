@@ -2,21 +2,20 @@ import { http, createConfig } from "wagmi";
 import { base, baseSepolia, foundry } from "wagmi/chains";
 import { coinbaseWallet, injected } from "wagmi/connectors";
 
-const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? baseSepolia.id);
-
-const chain =
-  chainId === base.id ? base : chainId === foundry.id ? foundry : baseSepolia;
-
 export const wagmiConfig = createConfig({
-  chains: [chain],
+  chains: [base, baseSepolia, foundry],
   connectors: [
     coinbaseWallet({ appName: "AguasPuras Capture", preference: "smartWalletOnly" }),
     injected()
   ],
   transports: {
-    [chain.id]: http(process.env.NEXT_PUBLIC_RPC_URL)
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+    [foundry.id]: http("http://127.0.0.1:8545")
   },
   ssr: true
 });
 
-export const activeChain = chain;
+const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? baseSepolia.id);
+export const activeChain =
+  chainId === base.id ? base : chainId === foundry.id ? foundry : baseSepolia;

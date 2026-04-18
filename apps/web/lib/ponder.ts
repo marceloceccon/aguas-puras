@@ -1,5 +1,14 @@
 import type { IndexedSample, LabReadings, ParsedSample } from "./types";
 
+export interface IndexedCollector {
+  address: `0x${string}`;
+  approved: boolean;
+  lastChangedAt: string;
+  lastChangedBlock: string;
+  approvedCount: number;
+  revokedCount: number;
+}
+
 const PONDER_URL = process.env.NEXT_PUBLIC_PONDER_URL ?? "http://localhost:42069/graphql";
 
 const SAMPLES_QUERY = `
@@ -60,6 +69,31 @@ export async function fetchSamples(): Promise<ParsedSample[]> {
     return data.samples.items.map(parseSample);
   } catch (err) {
     console.warn("[ponder] samples fetch failed:", err);
+    return [];
+  }
+}
+
+const COLLECTORS_QUERY = `
+  query Collectors {
+    collectors(where: { approved: true }, orderBy: "lastChangedAt", orderDirection: "desc", limit: 100) {
+      items {
+        address
+        approved
+        lastChangedAt
+        lastChangedBlock
+        approvedCount
+        revokedCount
+      }
+    }
+  }
+`;
+
+export async function fetchApprovedCollectors(): Promise<IndexedCollector[]> {
+  try {
+    const data = await gql<{ collectors: { items: IndexedCollector[] } }>(COLLECTORS_QUERY);
+    return data.collectors.items;
+  } catch (err) {
+    console.warn("[ponder] collectors fetch failed:", err);
     return [];
   }
 }

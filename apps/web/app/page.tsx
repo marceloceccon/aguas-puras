@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CollectorsCard } from "@/components/CollectorsCard";
 import { FilterBar } from "@/components/FilterBar";
 import { ReadingsChart } from "@/components/ReadingsChart";
 import { SampleList } from "@/components/SampleList";
@@ -6,7 +7,7 @@ import { SamplesMap } from "@/components/SamplesMap";
 import { StatsBar } from "@/components/StatsBar";
 import { StudiesFeed } from "@/components/StudiesFeed";
 import { applyFilter, isEmptyFilter, parseFilter } from "@/lib/filter";
-import { fetchSamples } from "@/lib/ponder";
+import { fetchApprovedCollectors, fetchSamples } from "@/lib/ponder";
 import { listStudies } from "@/lib/studies";
 
 export const dynamic = "force-dynamic";
@@ -18,7 +19,11 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const filter = parseFilter(sp);
-  const [all, studies] = await Promise.all([fetchSamples(), listStudies()]);
+  const [all, studies, collectors] = await Promise.all([
+    fetchSamples(),
+    listStudies(),
+    fetchApprovedCollectors()
+  ]);
   const filtered = isEmptyFilter(filter) ? all : applyFilter(all, filter);
 
   return (
@@ -68,9 +73,15 @@ export default async function HomePage({
         </div>
       </section>
 
-      <section className="mt-10 space-y-3">
-        <h2 className="text-lg font-medium text-aqua-900 dark:text-aqua-50">Recent samples</h2>
-        <SampleList samples={filtered.slice(0, 50)} />
+      <section className="mt-10 grid gap-6 md:grid-cols-[2fr_1fr]">
+        <div>
+          <h2 className="mb-3 text-lg font-medium text-aqua-900 dark:text-aqua-50">Recent samples</h2>
+          <SampleList samples={filtered.slice(0, 50)} />
+        </div>
+        <div>
+          <h2 className="mb-3 text-lg font-medium text-aqua-900 dark:text-aqua-50">Collectors</h2>
+          <CollectorsCard collectors={collectors} />
+        </div>
       </section>
 
       <section className="mt-10 space-y-3">

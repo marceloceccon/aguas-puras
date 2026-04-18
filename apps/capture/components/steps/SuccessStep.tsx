@@ -15,7 +15,8 @@ export function SuccessStep({ uid, txHash, attester, onNew }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    const verifierUrl = `https://aguaspuras.org/verify/${uid}`;
+    const origin = process.env.NEXT_PUBLIC_VERIFIER_ORIGIN ?? "http://localhost:3001";
+    const verifierUrl = `${origin}/verify/${uid}`;
     QRCode.toDataURL(verifierUrl, { margin: 1, width: 240 })
       .then(setQrDataUrl)
       .catch(() => setQrDataUrl(null));

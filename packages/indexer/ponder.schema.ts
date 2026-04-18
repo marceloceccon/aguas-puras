@@ -11,3 +11,12 @@ export const sample = onchainTable("sample", (t) => ({
   labReadingsUpdatedAt: t.bigint(),
   labReadingsUpdater: t.hex()
 }));
+
+export const collector = onchainTable("collector", (t) => ({
+  address: t.hex().primaryKey(),
+  approved: t.boolean().notNull(),
+  lastChangedAt: t.bigint().notNull(),
+  lastChangedBlock: t.bigint().notNull(),
+  approvedCount: t.integer().notNull().default(0),
+  revokedCount: t.integer().notNull().default(0)
+}));
