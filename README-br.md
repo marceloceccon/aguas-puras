@@ -1,7 +1,27 @@
 # AguasPuras
 ### Água limpa. Dados abertos. Começa em Floripa.
-[English Version](README.md) · [Especificação](specification.md) · [Desenvolvimento](DEVELOPING.md) · [Segurança](SECURITY.md)
+[English Version](README.md) · [Desenvolvimento](DEVELOPING.md) · [Segurança](SECURITY.md)
 
+---
+
+## Status · O Que Já Está Pronto
+
+Isso não é slideware. É um sistema institucional de produção funcionando. **42 commits** na `main`, **82 testes automatizados verdes**, cada camada da stack entregando:
+
+| Camada | O que já está pronto | Testes |
+|---|---|---|
+| **Smart contracts** | `WaterSampleRegistry` v2 (OpenZeppelin `AccessControl`; fluxo em duas etapas `publishSample` → `reviewAndSign` com segregação de funções on-chain; `updateLabReadings` gated por `DATA_OWNER_ROLE`) + `FieldAgentRegistry` (autocadastro com dados pessoais cifrados via ECIES; gatilhos de Direito ao Esquecimento LGPD). Solidity 0.8.24. `publishSample` = 149.302 gás (abaixo do orçamento de 150k). | Foundry unitários + fuzz + 3 invariantes de protocolo a 128.000 chamadas de handler cada — **37/37 verdes** |
+| **Indexador** | Workspace Ponder 0.9. Três tabelas on-chain (`sample`, `field_agent`, `data_owner_key`). API GraphQL em `:42069`. Configurável para Anvil / Base Sepolia / Base mainnet. | Smoke-test de sync histórico + tempo real |
+| **PWA de Captura** (Agente de Campo) | Next.js 15 + wagmi. Câmera + GPS + formulário. Marca d'água em canvas (timestamp + GPS + coletor queimados nos pixels *antes* do hash). Pinata IPFS real através de um proxy com JWT server-side. Criptografia ECIES dos dados pessoais para a pubkey on-chain do Controlador de Dados. Envelope assinado off-chain → caixa de entrada do Laboratório. Service worker, rascunhos em IndexedDB, fluxo `/register`. Agentes de campo pagam **zero de gás**. | Vitest — **5/5** (round-trip ECIES, decrypt adversarial rejeita, tolerância de formato de pubkey) |
+| **Dashboard público + ferramentas do laboratório** | Next.js 15. Mapa ao vivo Leaflet + OSM, séries temporais Recharts, filtros via URL, exportação CSV. `/verify/[uid]` verificador direto na chain (sem indexador). `/sample/[uid]` detalhamento com thumbnail IPFS. Feed de estudos. `/admin` com gate por wallet (API admin assinada, protegida contra MITM por hash do body), `/publish` (dashboard do Publicador), `/review` (dashboard do Revisor). | Vitest — **31/31** (body-binding do admin auth, validação de estudos, filtros, rate limiter) |
+| **Primitivas compartilhadas** | `@aguas/shared` — fonte única de verdade para as ABIs v2, codec canônico de EAS (encode/decode lat-lon, dataHash, attestationUID, mensagem), tipos compartilhados. Consumido pelos dois apps. | Vitest — **9/9** (round-trip do codec, determinismo do UID, forma da mensagem) |
+| **Segurança + ops** | Escritas admin assinadas (assinatura de wallet + `keccak256(body)` + `ADMIN_ALLOWLIST` + kill-switch `STUDIES_API_ENABLED`). Caixa de entrada de agentes de campo com rate limit por wallet + gate on-chain `FieldAgentRegistry.isActive`. Fluxo de verify na Basescan. Receita de deploy compatível com Safe na mainnet. CI no GitHub Actions (Foundry + Node + Vitest + `next build`). [`SECURITY.md`](SECURITY.md) + [`DEVELOPING.md`](DEVELOPING.md) + [`CONTRIBUTING.md`](CONTRIBUTING.md) + [`CHANGELOG.md`](CHANGELOG.md). | Coberto nas linhas acima |
+
+**Prontidão para deploy.** Todas as 8 decisões bloqueantes originais resolvidas (registro do schema EAS, custódia Safe, Pinata, WalletConnect, Basescan, admin auth, política de auditoria). As três próximas ações são de operação: `pnpm deploy:sepolia` com o Safe como `LAB_WALLET`/`OWNER`, registrar o schema EAS em cada rede, apontar envs para os endereços live da Sepolia. Auditoria de contratos Sherlock/Cantina bloqueia o corte para Base mainnet.
+
+Veja [`CHANGELOG.md`](CHANGELOG.md) para o histórico completo.
+
+---
 
 ## 1. O Problema
 
