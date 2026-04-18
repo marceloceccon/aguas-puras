@@ -1,14 +1,12 @@
-import { promises as fs } from "node:fs";
-import path from "node:path";
 import { NextResponse } from "next/server";
-import type { Study } from "@/lib/types";
+import { listStudyFiles, writeStudy } from "@/lib/studies";
+import { validateStudy } from "@/lib/study-validate";
 
-const STUDIES_DIR = path.resolve(process.cwd(), "..", "..", "studies");
+export async function GET() {
+  const files = await listStudyFiles();
+  return NextResponse.json({ items: files });
+}
 
-/**
- * Write a study JSON to /studies/. Dev-only: refuses if NODE_ENV === "production".
- * Filename is sanitized; the body must match the Study shape.
- */
 export async function POST(req: Request) {
   if (process.env.NODE_ENV === "production") {
     return NextResponse.json(
@@ -17,7 +15,7 @@ export async function POST(req: Request) {
     );
   }
 
-  let payload: { filename?: string; study?: Study };
+  let payload: { filename?: string; study?: unknown };
   try {
     payload = (await req.json()) as typeof payload;
   } catch {
@@ -25,22 +23,19 @@ export async function POST(req: Request) {
   }
 
   const { filename, study } = payload;
-  if (!filename || !study || typeof study !== "object") {
+  if (!filename || !study) {
     return NextResponse.json({ error: "Missing filename or study" }, { status: 400 });
   }
 
-  const safe = filename.replace(/[^a-z0-9.-]/gi, "-");
-  if (!safe.endsWith(".json")) {
-    return NextResponse.json({ error: "Filename must end with .json" }, { status: 400 });
+  const validation = validateStudy(study);
+  if (!validation.ok) {
+    return NextResponse.json({ error: "Validation failed", issues: validation.errors }, { status: 400 });
   }
 
-  const target = path.join(STUDIES_DIR, safe);
-  if (!target.startsWith(STUDIES_DIR)) {
-    return NextResponse.json({ error: "Path traversal rejected" }, { status: 400 });
+  try {
+    const saved = await writeStudy(filename, validation.value);
+    return NextResponse.json({ ok: true, path: `/studies/${saved}` });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : String(e) }, { status: 400 });
   }
-
-  await fs.mkdir(STUDIES_DIR, { recursive: true });
-  await fs.writeFile(target, JSON.stringify(study, null, 2) + "\n", "utf8");
-
-  return NextResponse.json({ ok: true, path: `/studies/${safe}` });
 }
