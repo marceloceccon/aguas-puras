@@ -1,6 +1,6 @@
 # AguasPuras
 ### Clean water. Open data. Starts in Floripa.
-[Portuguese Version](README-br.md)
+[Portuguese Version](README-br.md) · [Spec](specification.md) · [Developing](DEVELOPING.md) · [Security](SECURITY.md)
 
 
 ## 1. The Problem
@@ -16,7 +16,7 @@ Rain hits Jurerê and E. coli explodes from a valve that should stay shut. Beach
 Mariculture pulls R$ 50 million from the bay. Two weeks of closed fishing zones and two thousand families skip rent. Algal blooms return because the effluent never stopped.
 
 ## 2. The Solution
-We sample. We own the lab in Floripa. Hach DR3900 on the bench, R$ 50,000 of precision optics. 596 samples every month: 180 from kitchen taps across 45 neighborhoods, 416 from 42 beaches and 10 effluent points.
+We sample. The **AguasPuras Foundation** (Brazilian CNPJ non-profit) owns the lab in Floripa. Hach DR3900 on the bench, R$ 50,000 of precision optics. 596 samples every month: 180 from kitchen taps across 45 neighborhoods, 416 from 42 beaches and 10 effluent points.
 
 Every sample gets signed on Base. EAS stamps the collector. Timestamp. GPS. Reading. Locked forever. Nobody rewrites it.
 
@@ -75,13 +75,13 @@ Base funds public goods on purpose. Our mission fits their thesis. Pick Base and
 Any city forks the open standard. Public onchain water-quality data, free to query anywhere. Citizens finally hold a real tool.
 
 ## 6. AguasPuras Foundation
-Someone keeps this alive long-term. That’s the Foundation.
+A registered Brazilian CNPJ non-profit. The Foundation holds the bank accounts, the PIX on-off ramps, the lab equipment, and every legal relationship — employment, supplier, municipal. The DAO on Base is its **digital twin**: governance, transparent data, transparent money flow.
 
-**Money in.** ESG sponsorships from companies that actually mean it. Impact investors. Grants from Base, Gitcoin, BNDES, Fundo Nacional de Meio Ambiente. Municipal contracts for sanitation and tourism.
+**Money in.** ESG sponsorships from companies that actually mean it. Impact investors. Grants from Base, Gitcoin, BNDES, Fundo Nacional de Meio Ambiente. Municipal contracts for sanitation and tourism. Donations arrive in BRL via PIX and in USDC/ETH on Base; both flow into the same transparent ledger.
 
-**Operations.** Keep the contracts on Base alive. Run the website. Tune the AI models. Maintain the reference lab. Coordinate volunteers. Publish studies. Govern disputes.
+**Operations.** Keep the contracts on Base alive. Run the website. Tune the AI models. Maintain the reference lab. Coordinate volunteers. Publish studies. Govern disputes. Real expenses are paid in BRL by the CNPJ; crypto balance sheets publish automatically on-chain.
 
-**Governance.** Onchain financials stay public. Attestations and curator voting. One hundred percent open-source code. Quarterly impact reports.
+**Governance.** Onchain financials stay public. Attestations and curator voting. One hundred percent open-source code. Quarterly impact reports. AccessControl-gated roles on-chain mirror Foundation by-laws.
 
 **Jurerê Alliance.** Real partners, real seats. No slide logos.
 - **Founder Haus** hosts events and opens investor doors.
@@ -91,24 +91,69 @@ Someone keeps this alive long-term. That’s the Foundation.
 - **CASAN, IMA-SC, Secretaria de Turismo** integrate data into policy.
 - **Draper Startup House and Jason Calacanis** (via Founder Haus) reach global networks.
 
-## 7. Implementation
-**Base infrastructure.** Open-source smart contracts for sample registration, signing, and disputes. EAS attestations for collectors and labs. Public indexer plus open API.
+## 7. Institutional Backbone
 
-**Lab and equipment (Floripa MVP).** Hach DR3900 at R$ 50,000. Five hundred ninety-six samples a month. Weekly tap-water rounds across forty-five neighborhoods. Twice-weekly seawater rounds across forty-two beaches and ten effluent points.
+This is not an MVP meant to be thrown away. It is the production infrastructure a Brazilian non-profit, CASAN, IMA-SC, and large sponsors operate from day one.
+
+### 7.1 Legal + financial entity — Aguas Puras Foundation (CNPJ)
+- Registered Brazilian non-profit. CNPJ, bank accounts, PIX accept/pay both directions.
+- Holds all real-world assets: Hach DR3900, sample kits, lab space, staff contracts, supplier contracts, municipal MoUs.
+- Receives fiat sponsorships and grants; pays real-world expenses in BRL.
+
+### 7.2 On-chain digital twin — AguasPuras DAO on Base
+- Every sample, every study, every governance decision, every crypto-denominated receipt lives on Base.
+- The DAO never holds operational authority the Foundation doesn’t already have — it is the transparent mirror, not a parallel power.
+- Base is chosen for fees, public-goods alignment, Base ecosystem support, and the Founder Haus / Ipê Village / ETH Floripa talent density in Jurerê.
+
+### 7.3 Custody — Fireblocks (with Safe hybrid for pilot)
+- **Production target:** all role-holding wallets live in **Fireblocks**, with policy approval, key ceremonies, and institutional-grade operational controls. Data Owner private keys are generated inside Fireblocks HSM-backed vaults.
+- **Pilot bootstrap (Q2 2026):** operate via Gnosis **Safe** (2-of-3) while Fireblocks onboarding completes; Safe + Fireblocks coexist during the migration window. DEVELOPING.md documents the Safe→Fireblocks migration runbook.
+- Under the hood, nothing on-chain changes — AccessControl cares only that the caller holds a role. The custody implementation rotates without forcing a contract upgrade.
+
+### 7.4 Roles (on-chain via OpenZeppelin `AccessControl`)
+| Role                    | Count  | Who holds it                                 | What they can do                                                   |
+|-------------------------|--------|----------------------------------------------|--------------------------------------------------------------------|
+| `DEFAULT_ADMIN_ROLE`    | 1      | Foundation Safe (→ Fireblocks)               | Grant / revoke every other role. The Foundation bylaws’ digital twin. |
+| `PUBLISHER_ROLE`        | Many   | Lab staff on Fireblocks                      | `publishSample(fieldAgent, uid, dataHash, imageCid, readings)`    |
+| `REVIEWER_ROLE`         | Many   | Lab staff on Fireblocks (≠ publisher)        | `reviewAndSign(uid)`. Separation of duties is enforced on-chain.  |
+| `DATA_OWNER_ROLE`       | 1–2    | Foundation privacy officer on Fireblocks     | Decrypt field-agent personal data; set/rotate published ECIES key; deactivate agents; `updateLabReadings`. |
+| **Field Agent Wallet**  | Many   | Collectors on their phones                   | Self-register once. Sign attestation envelopes off-chain (no gas). |
+
+### 7.5 Privacy + LGPD / GDPR posture
+Sample data splits explicitly between public and encrypted:
+
+| Class      | Where                                                   | Who sees plaintext        |
+|------------|---------------------------------------------------------|---------------------------|
+| Public     | Base (on-chain): timestamp, lat, lon, imageCid, labReadingsJson, fieldAgent wallet, attestationUID | Everyone                  |
+| Encrypted  | IPFS blob (ECIES to Data Owner pubkey): name, CPF, contact, kit serial, address                    | Only `DATA_OWNER_ROLE`    |
+
+- Encryption: **ECIES over secp256k1** using `eth-crypto`, encrypted to the current `dataOwnerPublicKey` published by `FieldAgentRegistry.setDataOwnerPublicKey`. Field agents read the pubkey at registration time; the chain never sees plaintext.
+- LGPD / GDPR right-to-be-forgotten: Data Owner calls `FieldAgentRegistry.deactivate(agent)`, rotates the published pubkey, and the Foundation runs a scheduled un-pin on the Pinata-hosted blobs.
+- No economic incentives, bounties, or token issuance in the MVP — economics are explicitly deferred until the Foundation’s governance committee approves a framework.
+
+### 7.6 Money flow — fiat and crypto are deliberately separate
+- **Fiat (BRL, via CNPJ):** sponsorships, grants, municipal contracts, supplier invoices, PIX to volunteers if needed. The Foundation’s accountants close the books monthly; audited annually.
+- **Crypto (Base):** secondary transparent channel. USDC/ETH donations land in Foundation-controlled Fireblocks/Safe vaults. Every on-chain movement is public; the DAO indexer surfaces a live balance sheet.
+- The two ledgers reconcile in the Foundation’s quarterly impact report. The CNPJ is the source of truth for regulators; the DAO is the source of truth for the public.
+
+## 8. Implementation
+**Base infrastructure.** Open-source smart contracts for sample publication, review, and field-agent registration. EAS attestations per sample. Public Ponder indexer plus GraphQL + REST APIs.
+
+**Lab and equipment (Floripa Pilot).** Hach DR3900 at R$ 50,000. Five hundred ninety-six samples a month. Weekly tap-water rounds across forty-five neighborhoods. Twice-weekly seawater rounds across forty-two beaches and ten effluent points.
 
 **AI development.** Train on IMA-SC, CASAN, DataSUS, GIS, and industrial history. Build predictive (ARIMA/LSTM), triangulation (GIS + correlation), optimization (RL), and action recommender models. Three months training, six months validation, then continuous tuning.
 
-**Website and platform.** Interactive maps, time series, studies, social layer. Wallet signing on Base.
+**Website and platform.** Interactive maps, time series, filters, CSV export, studies, chain-direct verifier. Lab Publisher + Reviewer + Admin dashboards wallet-gated with wagmi + signed admin API.
 
 **Timeline, locked to 2026:**
 - **April 10–11.** Startup Society Conference III stage. Co-founders and first sponsors signed.
-- **April 22 – May 22.** Ipê Village sprint. Onchain House ships contracts. AI House ships models. Privacy House ships attestations.
-- **Month 1–3 post-Village.** Audited contracts live on Base mainnet. Lab running. Website live.
+- **April 22 – May 22.** Ipê Village sprint. Institutional production system hardens. Onchain House, AI House, Privacy House ship.
+- **Month 1–3 post-Village.** Audited contracts live on Base mainnet. Lab running. Website live. Foundation CNPJ active.
 - **Month 4–6.** Pilot hits ten neighborhoods and ten beaches. Models meet the field. First studies published.
-- **Month 7–12.** Full Floripa rollout. Open standard documented. Base Ecosystem Fund application filed.
+- **Month 7–12.** Full Floripa rollout. Open standard documented. Base Ecosystem Fund application filed. Fireblocks migration complete.
 - **Year 2+.** Two or three more cities. Standard hardens. Governance decentralizes.
 
-## 8. Money
+## 9. Money
 ### Floripa Pilot — Annual Cost
 | Line | R$ |
 |---|---|
@@ -127,13 +172,13 @@ Benefits hit R$ 238.7 to 252.4 million a year across health, tourism, sanitation
 | Base infra + smart contracts | 50,000 |
 | AI development and maintenance | 100,000 |
 | Website and platform | 60,000 |
-| Foundation operations | 150,000 |
+| Foundation operations (CNPJ, accounting, custody) | 150,000 |
 | **Total foundation** | **~R$ 360k** |
 
-**Funding.** ESG sponsorships, impact investment, Base/Gitcoin grants, donations, municipal partnerships.  
+**Funding.** ESG sponsorships, impact investment, Base/Gitcoin grants, donations (BRL + crypto), municipal partnerships.  
 **Social ROI.** Public onchain data, cheaper public health, living ecosystems, citizens who can finally see.
 
-## 9. Why Now
+## 10. Why Now
 The window opens in 2026. Three things collide in Jurerê Internacional this year and will not collide again:
 
 1. Ipê Village 2026 opens April 22 with one hundred fifty builders chasing three hundred apps.
@@ -148,27 +193,27 @@ The tech fits today. L2s cheap enough for citizen data. AI accurate enough to pr
 
 Volunteers stand ready. Environmental awareness peaks. Web3 builders want real impact. Floripa holds both in the same café.
 
-## 10. Join Us
+## 11. Join Us
 Floripa gets clean water. The world gets the standard. Pick your lane.
 
-**Volunteers.** Collect samples. Sign them onchain. Publish findings.
+**Volunteers / Field Agents.** Register via the Capture PWA — personal data stays encrypted, visible only to the Foundation's Data Owner. Collect samples. Sign them onchain. See them on the public dashboard.
 
 **Founder Haus community.** You already live at the intersection of health and sustainability. Extend it to the water. Mentor. Sponsor. Connect.
 
-**Ipê Village residents (Onchain and AI Houses).** Leave the Village with a shipped public good that protects 557,398 people and three million tourists. Let’s build.
+**Ipê Village residents (Onchain, AI, Privacy Houses).** Leave the Village with a shipped public good that protects 557,398 people and three million tourists. Let’s build.
 
-**ESG sponsors.** Fund kits, lab time, AI compute. Impact measurable onchain. Stop trusting PDFs.
+**ESG sponsors.** Fund kits, lab time, AI compute. Impact measurable onchain. Stop trusting PDFs. CNPJ receipts for the accounting team; on-chain receipts for the board.
 
 **Impact investors.** Two hundred fifteen times ROI on the pilot. Global replication path. Open-source moat.
 
-**Web3 builders.** Contribute contracts, indexers, dashboards. We file the Base grant together.
+**Web3 builders.** Contribute contracts, indexers, dashboards. See [`DEVELOPING.md`](DEVELOPING.md) for the end-to-end boot recipe. We file the Base grant together.
 
-**Researchers.** Data sits open. Publish.
+**Researchers.** Data sits open. Publish via the wallet-gated admin panel; sign once and commit.
 
 **Governments (Floripa first).** Stop buying locked PDFs from consultants. Build sanitation policy on live, verifiable data.
 
 
-## 11. Who is Behind This
+## 12. Who is Behind This
 
 Right now it’s just me — Marcelo Ceccon, founder.
 
@@ -186,5 +231,5 @@ Water belongs to everyone. Let’s prove every drop, in public, forever. Starts 
 
 ---
 
-**AguasPuras Foundation**  
+**AguasPuras Foundation** (Brazilian CNPJ non-profit)  
 *Clean water. Open data. Global standard. Starts in Floripa.*
