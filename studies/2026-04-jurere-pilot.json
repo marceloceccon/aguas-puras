@@ -1,0 +1,13 @@
+{
+  "id": "study-jurere-pilot-2026-04",
+  "title": "Jurerê Internacional pilot — first two weeks",
+  "date": "2026-04-17",
+  "author": "marcelo.base.eth",
+  "summary": "Initial pilot results from AguasPuras sample collection in Jurerê Internacional, Florianópolis. Baseline readings across 12 coastal and 6 tap-water points during the first two weeks of April 2026. No E. coli excursions above CONAMA 274/2000 thresholds detected in the period covered, but fluoride levels in two tap-water points trended above the Portaria GM/MS 888/2021 target.",
+  "referencedSamples": [],
+  "keyFindings": [
+    { "param": "ecoli", "avg": 18, "trend": "flat" },
+    { "param": "fluoride", "avg": 1.3, "trend": "up" },
+    { "param": "ph", "avg": 7.4, "trend": "flat" }
+  ]
+}
