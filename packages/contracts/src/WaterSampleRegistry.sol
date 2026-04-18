@@ -1,28 +1,49 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.24;
 
-/// @title WaterSampleRegistry
-/// @notice Immutable on-chain index of water samples, keyed by their EAS attestation UID.
-///         Collectors self-register samples after attesting off-chain. A designated lab wallet
-///         can append lab readings to a sample post-registration without touching the attestation.
-/// @dev Gas target: < 150k for `registerSample`. No external imports; minimal surface area.
-contract WaterSampleRegistry {
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+
+/// @title WaterSampleRegistry v2
+/// @notice Two-step institutional workflow for on-chain publication of water-sample attestations.
+///         Field agents sign their attestation envelope off-chain (no gas). A laboratory
+///         `PUBLISHER_ROLE` publishes the sample on-chain; a distinct `REVIEWER_ROLE` signs off
+///         on it as a second pair of eyes. Post-review, a `DATA_OWNER_ROLE` can append or replace
+///         lab readings (e.g. after instrument analysis).
+/// @dev Roles are granted and revoked by `DEFAULT_ADMIN_ROLE` (the Foundation's Safe). Field-agent
+///      personal data is stored in FieldAgentRegistry; this contract stores only public sample
+///      metadata.
+contract WaterSampleRegistry is AccessControl {
+    bytes32 public constant PUBLISHER_ROLE = keccak256("PUBLISHER_ROLE");
+    bytes32 public constant REVIEWER_ROLE = keccak256("REVIEWER_ROLE");
+    bytes32 public constant DATA_OWNER_ROLE = keccak256("DATA_OWNER_ROLE");
+
     struct Sample {
         bytes32 dataHash;
-        address attester;
-        uint64 blockTimestamp;
+        address fieldAgent;
+        address publisher;
+        address reviewer;
+        uint64 publishedAt;
+        uint64 reviewedAt;
+        string imageCid;
         string labReadingsJson;
+        bool reviewed;
     }
-
-    /// @notice Wallet authorized to append lab readings. Immutable for gas and auditability.
-    address public immutable labWallet;
 
     mapping(bytes32 => Sample) private _samples;
 
-    event SampleRegistered(
+    event SamplePublished(
         bytes32 indexed attestationUID,
-        address indexed attester,
+        address indexed fieldAgent,
+        address indexed publisher,
         bytes32 dataHash,
+        string imageCid,
+        string labReadingsJson,
+        uint64 timestamp
+    );
+
+    event SampleReviewed(
+        bytes32 indexed attestationUID,
+        address indexed reviewer,
         uint64 timestamp
     );
 
@@ -33,48 +54,94 @@ contract WaterSampleRegistry {
     );
 
     error InvalidAttestationUID();
-    error SampleAlreadyRegistered();
+    error SampleAlreadyPublished();
     error SampleNotFound();
-    error NotLabWallet();
+    error SampleAlreadyReviewed();
+    error SampleNotReviewed();
     error ZeroAddress();
 
-    constructor(address _labWallet) {
-        if (_labWallet == address(0)) revert ZeroAddress();
-        labWallet = _labWallet;
+    constructor(address admin) {
+        if (admin == address(0)) revert ZeroAddress();
+        _grantRole(DEFAULT_ADMIN_ROLE, admin);
     }
 
-    /// @notice Register a previously-signed EAS attestation on-chain.
-    /// @param attestationUID EAS attestation UID (unique; cannot be re-registered).
-    /// @param dataHash keccak256 of the canonical attestation payload, for integrity cross-check.
-    function registerSample(bytes32 attestationUID, bytes32 dataHash) external {
+    /// @notice Publish a field-agent-signed attestation on-chain. Caller must hold PUBLISHER_ROLE.
+    ///         The signature of the field agent is verified off-chain before this call; this
+    ///         function records the semantic attester (fieldAgent) alongside the msg.sender
+    ///         (publisher) for provenance.
+    function publishSample(
+        address fieldAgent,
+        bytes32 attestationUID,
+        bytes32 dataHash,
+        string calldata imageCid,
+        string calldata labReadingsJson
+    ) external onlyRole(PUBLISHER_ROLE) {
         if (attestationUID == bytes32(0)) revert InvalidAttestationUID();
+        if (fieldAgent == address(0)) revert ZeroAddress();
         Sample storage s = _samples[attestationUID];
-        if (s.attester != address(0)) revert SampleAlreadyRegistered();
+        if (s.publishedAt != 0) revert SampleAlreadyPublished();
 
         uint64 ts = uint64(block.timestamp);
         s.dataHash = dataHash;
-        s.attester = msg.sender;
-        s.blockTimestamp = ts;
+        s.fieldAgent = fieldAgent;
+        s.publisher = msg.sender;
+        s.publishedAt = ts;
+        s.imageCid = imageCid;
+        s.labReadingsJson = labReadingsJson;
 
-        emit SampleRegistered(attestationUID, msg.sender, dataHash, ts);
+        emit SamplePublished(
+            attestationUID,
+            fieldAgent,
+            msg.sender,
+            dataHash,
+            imageCid,
+            labReadingsJson,
+            ts
+        );
     }
 
-    /// @notice Append or replace lab readings for a registered sample. Lab wallet only.
-    function updateLabReadings(bytes32 attestationUID, string calldata newReadings) external {
-        if (msg.sender != labWallet) revert NotLabWallet();
+    /// @notice Second-pair-of-eyes sign-off. Caller must hold REVIEWER_ROLE and must not be the
+    ///         original publisher (separation of duties).
+    function reviewAndSign(bytes32 attestationUID) external onlyRole(REVIEWER_ROLE) {
         Sample storage s = _samples[attestationUID];
-        if (s.attester == address(0)) revert SampleNotFound();
+        if (s.publishedAt == 0) revert SampleNotFound();
+        if (s.reviewed) revert SampleAlreadyReviewed();
+        if (msg.sender == s.publisher) revert SeparationOfDutiesViolated();
+
+        uint64 ts = uint64(block.timestamp);
+        s.reviewer = msg.sender;
+        s.reviewedAt = ts;
+        s.reviewed = true;
+
+        emit SampleReviewed(attestationUID, msg.sender, ts);
+    }
+
+    error SeparationOfDutiesViolated();
+
+    /// @notice Append or replace lab readings post-review. Caller must hold DATA_OWNER_ROLE.
+    ///         Only callable after REVIEWER_ROLE has signed the sample.
+    function updateLabReadings(bytes32 attestationUID, string calldata newReadings)
+        external
+        onlyRole(DATA_OWNER_ROLE)
+    {
+        Sample storage s = _samples[attestationUID];
+        if (s.publishedAt == 0) revert SampleNotFound();
+        if (!s.reviewed) revert SampleNotReviewed();
         s.labReadingsJson = newReadings;
         emit LabReadingsUpdated(attestationUID, msg.sender, newReadings);
     }
 
     function getSample(bytes32 attestationUID) external view returns (Sample memory) {
         Sample memory s = _samples[attestationUID];
-        if (s.attester == address(0)) revert SampleNotFound();
+        if (s.publishedAt == 0) revert SampleNotFound();
         return s;
     }
 
     function exists(bytes32 attestationUID) external view returns (bool) {
-        return _samples[attestationUID].attester != address(0);
+        return _samples[attestationUID].publishedAt != 0;
+    }
+
+    function isReviewed(bytes32 attestationUID) external view returns (bool) {
+        return _samples[attestationUID].reviewed;
     }
 }
