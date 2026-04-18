@@ -6,12 +6,12 @@ import type { Hex } from "viem";
 
 interface Props {
   uid: Hex;
-  txHash: Hex;
-  attester: Hex;
+  fieldAgent: Hex;
+  submittedId: string;
   onNew: () => void;
 }
 
-export function SuccessStep({ uid, txHash, attester, onNew }: Props) {
+export function SuccessStep({ uid, fieldAgent, submittedId, onNew }: Props) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -28,7 +28,13 @@ export function SuccessStep({ uid, txHash, attester, onNew }: Props) {
         ✓
       </div>
 
-      <h3 className="text-xl font-semibold text-aqua-900 dark:text-aqua-50">Registered on Base</h3>
+      <h3 className="text-xl font-semibold text-aqua-900 dark:text-aqua-50">
+        Submitted to Laboratory
+      </h3>
+      <p className="text-sm text-aqua-700 dark:text-aqua-50/70">
+        Your signed attestation is in the Laboratory inbox. A Lab Publisher will verify and
+        publish it on Base; you pay no gas. Scan the QR at any time to check publication status.
+      </p>
 
       {qrDataUrl ? (
         <img
@@ -42,8 +48,8 @@ export function SuccessStep({ uid, txHash, attester, onNew }: Props) {
 
       <dl className="mx-auto max-w-md space-y-2 rounded-xl border border-aqua-500/20 bg-white/50 p-4 text-left text-xs dark:bg-aqua-900/30">
         <Row label="attestationUID" value={uid} />
-        <Row label="tx" value={txHash} />
-        <Row label="attester" value={attester} />
+        <Row label="field agent" value={fieldAgent} />
+        <Row label="inbox id" value={submittedId} />
       </dl>
 
       <button

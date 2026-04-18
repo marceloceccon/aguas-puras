@@ -30,7 +30,11 @@ export default function NewSamplePage() {
   const [imageSha, setImageSha] = useState<string | undefined>(undefined);
   const [pinFallback, setPinFallback] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ uid: Hex; txHash: Hex; attester: Hex } | null>(null);
+  const [result, setResult] = useState<{
+    uid: Hex;
+    fieldAgent: Hex;
+    submittedId: string;
+  } | null>(null);
 
   const draft: SampleDraft = useMemo(
     () => ({
@@ -149,12 +153,12 @@ export default function NewSamplePage() {
           draft={draft}
           onBack={() => setStep("review")}
           onSuccess={async (r) => {
-            setResult(r);
+            setResult({ uid: r.uid, fieldAgent: r.fieldAgent, submittedId: r.submittedId });
             await saveSubmitted({
               ...draft,
               attestationUID: r.uid,
-              txHash: r.txHash,
-              attester: r.attester,
+              txHash: ("0x" + "0".repeat(64)) as Hex, // on-chain tx happens at the Laboratory
+              attester: r.fieldAgent,
               ...(pinFallback ? { pinFallback: true as const } : {})
             });
             await deleteDraft(draftId);
@@ -166,8 +170,8 @@ export default function NewSamplePage() {
       {step === "success" && result && (
         <SuccessStep
           uid={result.uid}
-          txHash={result.txHash}
-          attester={result.attester}
+          fieldAgent={result.fieldAgent}
+          submittedId={result.submittedId}
           onNew={() => {
             if (typeof window !== "undefined") window.location.assign("/new");
           }}
