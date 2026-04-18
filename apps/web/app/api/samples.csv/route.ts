@@ -1,7 +1,19 @@
 import { applyFilter, parseFilter } from "@/lib/filter";
 import { fetchSamples } from "@/lib/ponder";
 
-const COLUMNS = ["attestationUID", "attester", "iso", "lat", "lon", "dataHash", "txHash", "readingsJson"] as const;
+const COLUMNS = [
+  "attestationUID",
+  "fieldAgent",
+  "publisher",
+  "iso",
+  "lat",
+  "lon",
+  "dataHash",
+  "publishTxHash",
+  "reviewed",
+  "reviewer",
+  "readingsJson"
+] as const;
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -11,12 +23,15 @@ export async function GET(req: Request) {
 
   const rows = filtered.map((s) => [
     s.attestationUID,
-    s.attester,
+    s.fieldAgent,
+    s.publisher,
     s.iso,
     s.lat ?? "",
     s.lon ?? "",
     s.dataHash,
-    s.txHash,
+    s.publishTxHash,
+    s.reviewed ? "true" : "false",
+    s.reviewer ?? "",
     JSON.stringify(s.readings)
   ]);
 

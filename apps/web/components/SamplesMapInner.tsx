@@ -37,7 +37,7 @@ export default function SamplesMapInner({ samples }: { samples: ParsedSample[] }
             <Popup>
               <div className="min-w-[200px] space-y-1 text-xs">
                 <div className="font-mono text-[11px]">{shortHash(s.attestationUID)}</div>
-                <div>{new Date(Number(s.blockTimestamp) * 1000).toLocaleString()}</div>
+                <div>{new Date(Number(s.publishedAt) * 1000).toLocaleString()}</div>
                 <Link href={`/sample/${s.attestationUID}`} className="text-aqua-700 underline">
                   open →
                 </Link>

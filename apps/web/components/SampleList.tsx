@@ -26,7 +26,7 @@ export function SampleList({ samples }: { samples: ParsedSample[] }) {
                 {shortHash(s.attestationUID)}
               </div>
               <div className="text-[11px] text-aqua-700/70 dark:text-aqua-50/60">
-                {formatTimestamp(s.blockTimestamp)} · by {shortAddr(s.attester)}
+                {formatTimestamp(s.publishedAt)} · by {shortAddr(s.fieldAgent)}
               </div>
             </div>
             <div className="shrink-0 text-xs text-aqua-700 dark:text-aqua-50/70">

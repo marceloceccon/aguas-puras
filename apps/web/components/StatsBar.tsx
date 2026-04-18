@@ -9,7 +9,7 @@ interface Props {
 
 export function StatsBar({ total, shown, filtered }: Props) {
   const last = shown[0];
-  const latest = last ? formatTimestamp(last.blockTimestamp) : "—";
+  const latest = last ? formatTimestamp(last.publishedAt) : "—";
   const label = filtered ? `${shown.length} of ${total}` : `${total}`;
   return (
     <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-aqua-700/80 dark:text-aqua-50/70">

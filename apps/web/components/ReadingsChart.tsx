@@ -12,7 +12,7 @@ export function ReadingsChart({ samples, param }: Props) {
   const series = samples
     .filter((s) => typeof s.readings[param] === "number")
     .map((s) => ({
-      t: new Date(Number(s.blockTimestamp) * 1000).toLocaleDateString(),
+      t: new Date(Number(s.publishedAt) * 1000).toLocaleDateString(),
       v: s.readings[param]
     }))
     .reverse();

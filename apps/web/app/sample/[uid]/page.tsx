@@ -15,9 +15,12 @@ export default async function SamplePage({
   if (!sample) notFound();
 
   const eas = easUrl(sample.attestationUID);
-  const tx = explorerTxUrl(sample.txHash);
-  const imageCid = typeof sample.readings["_imageCid"] === "string" ? (sample.readings["_imageCid"] as unknown as string) : null;
-  const image = ipfsUrl(imageCid);
+  const tx = explorerTxUrl(sample.publishTxHash);
+  const cidFromReadings =
+    typeof sample.readings["_imageCid"] === "string"
+      ? (sample.readings["_imageCid"] as unknown as string)
+      : null;
+  const image = ipfsUrl(sample.imageCid || cidFromReadings);
 
   return (
     <main className="mx-auto max-w-2xl px-5 pb-20 pt-8">
@@ -48,14 +51,37 @@ export default async function SamplePage({
 
       <section className="mt-6 rounded-2xl border border-aqua-500/20 bg-white/50 p-5 dark:bg-aqua-900/30">
         <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-aqua-700/70 dark:text-aqua-50/60">Attester</dt>
-          <dd className="font-mono">{shortAddr(sample.attester)}</dd>
-          <dt className="text-aqua-700/70 dark:text-aqua-50/60">When</dt>
-          <dd>{formatTimestamp(sample.blockTimestamp)}</dd>
+          <dt className="text-aqua-700/70 dark:text-aqua-50/60">Field agent</dt>
+          <dd className="font-mono">{shortAddr(sample.fieldAgent)}</dd>
+          <dt className="text-aqua-700/70 dark:text-aqua-50/60">Publisher</dt>
+          <dd className="font-mono">{shortAddr(sample.publisher)}</dd>
+          <dt className="text-aqua-700/70 dark:text-aqua-50/60">Published</dt>
+          <dd>{formatTimestamp(sample.publishedAt)}</dd>
           <dt className="text-aqua-700/70 dark:text-aqua-50/60">Block</dt>
-          <dd className="font-mono">#{sample.blockNumber}</dd>
+          <dd className="font-mono">#{sample.publishedBlock}</dd>
+          <dt className="text-aqua-700/70 dark:text-aqua-50/60">Reviewed</dt>
+          <dd>
+            {sample.reviewed ? (
+              <span className="inline-flex items-center gap-1 text-aqua-700 dark:text-aqua-50">
+                ✓ by <code className="font-mono text-xs">{sample.reviewer && shortAddr(sample.reviewer)}</code>
+                {sample.reviewedAt && (
+                  <span className="text-aqua-700/60 dark:text-aqua-50/60">
+                    · {formatTimestamp(sample.reviewedAt)}
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="text-amber-700">awaiting Laboratory review</span>
+            )}
+          </dd>
           <dt className="text-aqua-700/70 dark:text-aqua-50/60">Data hash</dt>
           <dd className="break-all font-mono text-xs">{sample.dataHash}</dd>
+          {sample.imageCid && (
+            <>
+              <dt className="text-aqua-700/70 dark:text-aqua-50/60">Image CID</dt>
+              <dd className="break-all font-mono text-xs">{sample.imageCid}</dd>
+            </>
+          )}
           {sample.lat !== null && sample.lon !== null && (
             <>
               <dt className="text-aqua-700/70 dark:text-aqua-50/60">Location</dt>
@@ -105,7 +131,7 @@ export default async function SamplePage({
             rel="noreferrer"
             className="rounded-full border border-aqua-500/40 px-3 py-1.5 text-aqua-700 hover:bg-aqua-500/10 dark:text-aqua-50"
           >
-            Tx on explorer ↗
+            Publish tx ↗
           </a>
         )}
       </section>

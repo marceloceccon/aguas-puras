@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CollectorsCard } from "@/components/CollectorsCard";
+import { FieldAgentsCard } from "@/components/FieldAgentsCard";
 import { FilterBar } from "@/components/FilterBar";
 import { ReadingsChart } from "@/components/ReadingsChart";
 import { SampleList } from "@/components/SampleList";
@@ -7,7 +7,7 @@ import { SamplesMap } from "@/components/SamplesMap";
 import { StatsBar } from "@/components/StatsBar";
 import { StudiesFeed } from "@/components/StudiesFeed";
 import { applyFilter, isEmptyFilter, parseFilter } from "@/lib/filter";
-import { fetchApprovedCollectors, fetchSamples } from "@/lib/ponder";
+import { fetchActiveFieldAgents, fetchSamples } from "@/lib/ponder";
 import { listStudies } from "@/lib/studies";
 
 export const dynamic = "force-dynamic";
@@ -19,10 +19,10 @@ export default async function HomePage({
 }) {
   const sp = await searchParams;
   const filter = parseFilter(sp);
-  const [all, studies, collectors] = await Promise.all([
+  const [all, studies, agents] = await Promise.all([
     fetchSamples(),
     listStudies(),
-    fetchApprovedCollectors()
+    fetchActiveFieldAgents()
   ]);
   const filtered = isEmptyFilter(filter) ? all : applyFilter(all, filter);
 
@@ -37,7 +37,19 @@ export default async function HomePage({
             Clean water. Open data. Every drop, proven on Base. Starts in Floripa.
           </p>
         </div>
-        <div className="flex gap-2 text-sm">
+        <div className="flex flex-wrap gap-2 text-sm">
+          <Link
+            href="/publish"
+            className="rounded-full border border-aqua-500/40 px-3 py-1.5 text-aqua-700 transition hover:bg-aqua-500/10 dark:text-aqua-50"
+          >
+            Publish
+          </Link>
+          <Link
+            href="/review"
+            className="rounded-full border border-aqua-500/40 px-3 py-1.5 text-aqua-700 transition hover:bg-aqua-500/10 dark:text-aqua-50"
+          >
+            Review
+          </Link>
           <Link
             href="/admin"
             className="rounded-full border border-aqua-500/40 px-3 py-1.5 text-aqua-700 transition hover:bg-aqua-500/10 dark:text-aqua-50"
@@ -79,8 +91,8 @@ export default async function HomePage({
           <SampleList samples={filtered.slice(0, 50)} />
         </div>
         <div>
-          <h2 className="mb-3 text-lg font-medium text-aqua-900 dark:text-aqua-50">Collectors</h2>
-          <CollectorsCard collectors={collectors} />
+          <h2 className="mb-3 text-lg font-medium text-aqua-900 dark:text-aqua-50">Field agents</h2>
+          <FieldAgentsCard agents={agents} />
         </div>
       </section>
 

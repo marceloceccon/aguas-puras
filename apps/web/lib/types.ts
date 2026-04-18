@@ -1,18 +1,21 @@
 export interface IndexedSample {
   attestationUID: `0x${string}`;
   dataHash: `0x${string}`;
-  attester: `0x${string}`;
-  blockNumber: string;
-  blockTimestamp: string;
-  txHash: `0x${string}`;
-  labReadingsJson: string | null;
+  fieldAgent: `0x${string}`;
+  publisher: `0x${string}`;
+  publishedAt: string;
+  publishedBlock: string;
+  publishTxHash: `0x${string}`;
+  imageCid: string;
+  labReadingsJson: string;
+  reviewer: `0x${string}` | null;
+  reviewedAt: string | null;
+  reviewed: boolean;
   labReadingsUpdatedAt: string | null;
   labReadingsUpdater: `0x${string}` | null;
 }
 
-export interface LabReadings {
-  [param: string]: number;
-}
+export type LabReadings = Record<string, number | string>;
 
 export interface ParsedSample extends IndexedSample {
   readings: LabReadings;

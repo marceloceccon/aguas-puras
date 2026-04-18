@@ -45,3 +45,8 @@ next-env.d.ts
 
 # typescript
 *.tsbuildinfo
+
+# pending envelopes waiting for lab publication (ephemeral)
+pending/*.json
+!pending/.gitkeep
+

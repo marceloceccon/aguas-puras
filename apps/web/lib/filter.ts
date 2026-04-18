@@ -25,11 +25,11 @@ export function applyFilter(samples: ParsedSample[], f: SampleFilter): ParsedSam
   const toTs = f.to ? Date.parse(f.to) / 1000 + 86_399 : undefined; // inclusive end-of-day
   const attester = f.attester;
   return samples.filter((s) => {
-    const ts = Number(s.blockTimestamp);
+    const ts = Number(s.publishedAt);
     if (fromTs !== undefined && ts < fromTs) return false;
     if (toTs !== undefined && ts > toTs) return false;
     if (f.param && !(f.param in s.readings)) return false;
-    if (attester && s.attester.toLowerCase() !== attester) return false;
+    if (attester && s.fieldAgent.toLowerCase() !== attester) return false;
     return true;
   });
 }
