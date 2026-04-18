@@ -9,7 +9,7 @@
     "start": "ponder start",
     "codegen": "ponder codegen",
     "serve": "ponder serve",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "ponder codegen"
   },
   "dependencies": {
     "hono": "^4.6.10",

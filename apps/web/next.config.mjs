@@ -7,7 +7,12 @@ const nextConfig = {
   // wagmi's WalletConnect + MetaMask connectors pull optional peer deps that
   // Next's webpack can't resolve; externalize them so the bundle builds cleanly.
   webpack: (config) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
+    config.externals.push(
+      "pino-pretty",
+      "lokijs",
+      "encoding",
+      "@react-native-async-storage/async-storage"
+    );
     return config;
   }
 };

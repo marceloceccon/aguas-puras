@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  contracts:
+    name: Foundry · test + gas snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: stable
+
+      - name: Ensure forge-std
+        working-directory: packages/contracts
+        run: forge install foundry-rs/forge-std || true
+
+      - name: Build
+        working-directory: packages/contracts
+        run: forge build --sizes
+
+      - name: Test
+        working-directory: packages/contracts
+        run: forge test -vv
+
+      - name: Gas snapshot
+        working-directory: packages/contracts
+        run: forge snapshot --check || forge snapshot
+
+  node:
+    name: Node · typecheck + web build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck capture
+        run: pnpm --filter @aguas/capture typecheck
+
+      - name: Typecheck web
+        run: pnpm --filter @aguas/web typecheck
+
+      - name: Validate indexer config (ponder codegen)
+        run: pnpm --filter @aguas/indexer typecheck
+
+      - name: Build web
+        run: pnpm --filter @aguas/web build
