@@ -160,6 +160,49 @@ server-component `fs`. Add a new study by:
 - **`forge install` complains about `--no-commit`** — you're on Foundry 1.5+,
   which removed the flag; `pnpm install:deps` already drops it.
 
+## Role setup (Foundation operator)
+
+After `pnpm deploy:sepolia` (or the mainnet Safe-driven deploy), the Foundation
+Safe (holding `DEFAULT_ADMIN_ROLE` on both registries) grants the operational
+roles. Do this once per environment via the Safe Transaction Builder:
+
+On `WaterSampleRegistry`:
+```solidity
+grantRole(PUBLISHER_ROLE, <lab-publisher-wallet>)     // 1..N wallets
+grantRole(REVIEWER_ROLE,  <lab-reviewer-wallet>)      // 1..N, distinct from publishers
+grantRole(DATA_OWNER_ROLE, <privacy-officer-wallet>)  // 1..2
+```
+
+On `FieldAgentRegistry`:
+```solidity
+grantRole(DATA_OWNER_ROLE, <privacy-officer-wallet>)  // same wallet
+```
+
+Then the Data Owner wallet publishes the ECIES pubkey once:
+```solidity
+setDataOwnerPublicKey(<65-byte uncompressed secp256k1, 0x04-prefixed>)
+```
+
+Field agents can now encrypt personal data to the Foundation.
+
+## Fireblocks migration (from Safe pilot)
+
+The pilot launches with the Foundation Safe holding every role. Production
+target is Fireblocks. Migration is non-disruptive because AccessControl cares
+only that the caller holds the role — custody can change without touching
+contracts.
+
+1. Provision Fireblocks vaults per role (one per PUBLISHER/REVIEWER/DATA_OWNER);
+   Data Owner uses an HSM-backed vault with policy-gated signing.
+2. Import the vault addresses; bylaws-approval for each signer.
+3. Via the Safe Transaction Builder, `grantRole` to every Fireblocks address
+   and `revokeRole` from the corresponding Safe-issued address.
+4. Last step: transfer `DEFAULT_ADMIN_ROLE` from the Safe to a Fireblocks
+   "Foundation Admin" vault (use `grantRole(DEFAULT_ADMIN_ROLE, fireblocks)`
+   → `renounceRole(DEFAULT_ADMIN_ROLE, safe)`).
+5. The Safe remains available as a break-glass signer until fully retired at
+   the next quarterly board meeting.
+
 ## Pilot readiness checklist
 
 Open decisions surfaced in `specification.md` are the blocker list for public
