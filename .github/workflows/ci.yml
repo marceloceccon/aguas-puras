@@ -59,8 +59,20 @@ jobs:
       - name: Typecheck web
         run: pnpm --filter @aguas/web typecheck
 
+      - name: Typecheck shared
+        run: pnpm --filter @aguas/shared typecheck
+
       - name: Validate indexer config (ponder codegen)
         run: pnpm --filter @aguas/indexer typecheck
+
+      - name: Test shared
+        run: pnpm --filter @aguas/shared test
+
+      - name: Test web
+        run: pnpm --filter @aguas/web test
+
+      - name: Test capture
+        run: pnpm --filter @aguas/capture test
 
       - name: Build web
         run: pnpm --filter @aguas/web build

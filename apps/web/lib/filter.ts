@@ -23,7 +23,7 @@ export function parseFilter(sp: Record<string, string | string[] | undefined>): 
 export function applyFilter(samples: ParsedSample[], f: SampleFilter): ParsedSample[] {
   const fromTs = f.from ? Date.parse(f.from) / 1000 : undefined;
   const toTs = f.to ? Date.parse(f.to) / 1000 + 86_399 : undefined; // inclusive end-of-day
-  const attester = f.attester;
+  const attester = f.attester?.toLowerCase();
   return samples.filter((s) => {
     const ts = Number(s.publishedAt);
     if (fromTs !== undefined && ts < fromTs) return false;
