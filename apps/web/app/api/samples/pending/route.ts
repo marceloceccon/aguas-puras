@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server";
-import { encodePacked, isHex, keccak256, recoverMessageAddress, type Hex } from "viem";
+import { encodePacked, isHex, keccak256, recoverMessageAddress } from "viem";
 import { requireAdmin } from "@/lib/admin-auth";
-import { listPending, savePending, type PendingEnvelope } from "@/lib/pending";
+import { listPending, pendingExists, savePending, type PendingEnvelope } from "@/lib/pending";
+import { isFieldAgentActive } from "@/lib/publicClient";
+import { rateLimit } from "@/lib/rate-limit";
 
 const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-origin": "*",
   "access-control-allow-methods": "POST, GET, OPTIONS",
   "access-control-allow-headers": "content-type, authorization"
 };
+
+// Rate-limit window. Field agents submitting faster than this are almost
+// certainly a misclick or a replay; legitimate capture flows take minutes.
+const RATE_LIMIT_WINDOW_SECONDS = Number(process.env.INBOX_RATE_LIMIT_SECONDS ?? 30);
 
 export function OPTIONS() {
   return new Response(null, { status: 204, headers: CORS_HEADERS });
@@ -26,15 +32,17 @@ export async function POST(req: Request) {
     return withCors(NextResponse.json({ error: "Invalid JSON" }, { status: 400 }));
   }
 
-  const errors = validate(body);
-  if (errors) return withCors(NextResponse.json({ error: errors }, { status: 400 }));
+  const shapeError = validateShape(body);
+  if (shapeError) return withCors(NextResponse.json({ error: shapeError }, { status: 400 }));
 
   // Signature verification: recovered address must match fieldAgent.
   let recovered: string;
   try {
     recovered = await recoverMessageAddress({ message: body.message, signature: body.signature });
   } catch {
-    return withCors(NextResponse.json({ error: "Signature could not be recovered" }, { status: 400 }));
+    return withCors(
+      NextResponse.json({ error: "Signature could not be recovered" }, { status: 400 })
+    );
   }
   if (recovered.toLowerCase() !== body.fieldAgent.toLowerCase()) {
     return withCors(
@@ -47,7 +55,38 @@ export async function POST(req: Request) {
     encodePacked(["bytes32", "address", "bytes32"], [body.schema, body.fieldAgent, body.dataHash])
   );
   if (expectedUid.toLowerCase() !== body.uid.toLowerCase()) {
-    return withCors(NextResponse.json({ error: "UID does not match schema+agent+dataHash" }, { status: 400 }));
+    return withCors(
+      NextResponse.json({ error: "UID does not match schema+agent+dataHash" }, { status: 400 })
+    );
+  }
+
+  // Duplicate: this uid is already in the inbox (re-submit or deterministic replay).
+  if (await pendingExists(body.uid)) {
+    return withCors(
+      NextResponse.json({ error: "Envelope already queued for this UID" }, { status: 409 })
+    );
+  }
+
+  // Field-agent must be registered + active on-chain. Prevents spam from
+  // unknown wallets at the cost of one RPC call.
+  if (!(await isFieldAgentActive(body.fieldAgent))) {
+    return withCors(
+      NextResponse.json(
+        { error: "Field agent is not registered or has been deactivated" },
+        { status: 403 }
+      )
+    );
+  }
+
+  // Per-wallet rate limit.
+  const rl = rateLimit(`inbox:${body.fieldAgent.toLowerCase()}`, RATE_LIMIT_WINDOW_SECONDS);
+  if (!rl.ok) {
+    const res = NextResponse.json(
+      { error: "Too many submissions from this wallet; slow down.", retryAfter: rl.retryAfter },
+      { status: 429 }
+    );
+    res.headers.set("retry-after", String(rl.retryAfter));
+    return withCors(res);
   }
 
   try {
@@ -67,7 +106,7 @@ export async function GET(req: Request) {
   return withCors(NextResponse.json({ items }));
 }
 
-function validate(e: unknown): string | null {
+function validateShape(e: unknown): string | null {
   if (!e || typeof e !== "object") return "Expected object";
   const o = e as Record<string, unknown>;
   for (const k of ["schema", "fieldAgent", "uid", "dataHash", "message", "signature"]) {
@@ -83,6 +122,3 @@ function validate(e: unknown): string | null {
   if (typeof o.submittedAt !== "number") return "Missing submittedAt";
   return null;
 }
-
-// Silence unused-var lint in some TS configs.
-export type _Ensure = Hex;

@@ -23,6 +23,17 @@ export interface PendingEnvelope {
 
 const PENDING_DIR = path.resolve(process.cwd(), "..", "..", "pending");
 
+export async function pendingExists(uid: string): Promise<boolean> {
+  const filename = sanitize(uid);
+  if (!filename) return false;
+  try {
+    await fs.access(path.join(PENDING_DIR, `${filename}.json`));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function savePending(envelope: PendingEnvelope): Promise<string> {
   const filename = sanitize(envelope.uid);
   if (!filename) throw new Error("Invalid uid");
