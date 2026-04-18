@@ -1,11 +1,11 @@
 import { createConfig } from "ponder";
 import { http } from "viem";
-import { CollectorRegistryAbi } from "./abis/CollectorRegistry";
+import { FieldAgentRegistryAbi } from "./abis/FieldAgentRegistry";
 import { WaterSampleRegistryAbi } from "./abis/WaterSampleRegistry";
 
 const network = (process.env.PONDER_NETWORK ?? "anvil") as "anvil" | "baseSepolia" | "base";
 const registryAddress = (process.env.REGISTRY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
-const collectorRegistryAddress = (process.env.COLLECTOR_REGISTRY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
+const fieldAgentRegistryAddress = (process.env.FIELD_AGENT_REGISTRY_ADDRESS ?? "0x0000000000000000000000000000000000000000") as `0x${string}`;
 const startBlock = Number(process.env.REGISTRY_START_BLOCK ?? 0);
 
 export default createConfig({
@@ -31,10 +31,10 @@ export default createConfig({
       address: registryAddress,
       startBlock
     },
-    CollectorRegistry: {
-      abi: CollectorRegistryAbi,
+    FieldAgentRegistry: {
+      abi: FieldAgentRegistryAbi,
       network,
-      address: collectorRegistryAddress,
+      address: fieldAgentRegistryAddress,
       startBlock
     }
   }
