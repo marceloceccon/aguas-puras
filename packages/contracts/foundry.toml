@@ -19,6 +19,13 @@ bracket_spacing = true
 [fuzz]
 runs = 256
 
+# The invariant handlers iterate over every published uid, so cost grows
+# quadratically with depth. Foundry's defaults (256 runs x 500 calls) took
+# ~10 minutes in CI; this keeps the suite meaningful and fast.
+[invariant]
+runs = 64
+depth = 64
+
 [etherscan]
 base_sepolia = { key = "${BASESCAN_API_KEY}", chain = 84532, url = "https://api-sepolia.basescan.org/api" }
 base = { key = "${BASESCAN_API_KEY}", chain = 8453, url = "https://api.basescan.org/api" }

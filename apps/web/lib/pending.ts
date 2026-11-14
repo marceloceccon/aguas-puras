@@ -6,11 +6,21 @@ export type { PendingEnvelope };
 
 const PENDING_DIR = path.resolve(process.cwd(), "..", "..", "pending");
 
-export async function pendingExists(uid: string): Promise<boolean> {
+function pendingFile(uid: string): string | null {
   const filename = sanitize(uid);
-  if (!filename) return false;
+  if (!filename) return null;
+  const root = path.resolve(PENDING_DIR);
+  const target = path.resolve(root, `${filename}.json`);
+  const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+  if (!target.startsWith(prefix)) return null;
+  return target;
+}
+
+export async function pendingExists(uid: string): Promise<boolean> {
+  const target = pendingFile(uid);
+  if (!target) return false;
   try {
-    await fs.access(path.join(PENDING_DIR, `${filename}.json`));
+    await fs.access(target);
     return true;
   } catch {
     return false;
@@ -19,21 +29,24 @@ export async function pendingExists(uid: string): Promise<boolean> {
 
 export async function savePending(envelope: PendingEnvelope): Promise<string> {
   const filename = sanitize(envelope.uid);
-  if (!filename) throw new Error("Invalid uid");
-  await fs.mkdir(PENDING_DIR, { recursive: true });
-  const target = path.join(PENDING_DIR, `${filename}.json`);
-  if (!target.startsWith(PENDING_DIR)) throw new Error("Path traversal rejected");
+  const target = pendingFile(envelope.uid);
+  if (!filename || !target) throw new Error("Invalid uid");
+  await fs.mkdir(path.resolve(PENDING_DIR), { recursive: true });
   await fs.writeFile(target, JSON.stringify(envelope, null, 2) + "\n", "utf8");
   return filename;
 }
 
 export async function listPending(): Promise<PendingEnvelope[]> {
   try {
-    const files = await fs.readdir(PENDING_DIR);
+    const root = path.resolve(PENDING_DIR);
+    const files = await fs.readdir(root);
     const jsons = files.filter((f) => f.endsWith(".json"));
     const loaded = await Promise.all(
       jsons.map(async (f) => {
-        const raw = await fs.readFile(path.join(PENDING_DIR, f), "utf8");
+        const candidate = path.resolve(root, f);
+        const prefix = root.endsWith(path.sep) ? root : root + path.sep;
+        if (!candidate.startsWith(prefix)) return null;
+        const raw = await fs.readFile(candidate, "utf8");
         try {
           return JSON.parse(raw) as PendingEnvelope;
         } catch {
@@ -50,10 +63,10 @@ export async function listPending(): Promise<PendingEnvelope[]> {
 }
 
 export async function readPending(uid: string): Promise<PendingEnvelope | null> {
-  const safe = sanitize(uid);
-  if (!safe) return null;
+  const target = pendingFile(uid);
+  if (!target) return null;
   try {
-    const raw = await fs.readFile(path.join(PENDING_DIR, `${safe}.json`), "utf8");
+    const raw = await fs.readFile(target, "utf8");
     return JSON.parse(raw) as PendingEnvelope;
   } catch {
     return null;
@@ -61,10 +74,10 @@ export async function readPending(uid: string): Promise<PendingEnvelope | null> 
 }
 
 export async function deletePending(uid: string): Promise<boolean> {
-  const safe = sanitize(uid);
-  if (!safe) return false;
+  const target = pendingFile(uid);
+  if (!target) return false;
   try {
-    await fs.unlink(path.join(PENDING_DIR, `${safe}.json`));
+    await fs.unlink(target);
     return true;
   } catch {
     return false;
