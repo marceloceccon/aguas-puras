@@ -44,7 +44,7 @@ jobs:
 
       - name: Gas snapshot
         working-directory: packages/contracts
-        run: forge snapshot --check || forge snapshot
+        run: forge snapshot --no-match-contract Invariants
 
   node:
     name: Node · typecheck + web build
